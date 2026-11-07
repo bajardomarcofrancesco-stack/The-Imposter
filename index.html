@@ -11,7 +11,7 @@
 /* Layout: one screen per phase. Host = projector view (big type, QR, table, leaderboard) with a slim control bar. Player = phone view, one card per step. */
 :root {
   --bg: #EDF1F5; --surface: #FFFFFF; --sunken: #E3E9EF; --ink: #14202C; --muted: #566879; --line: #CFD9E3;
-  --s: #2457D6; --e: #C8470C; --warn: #A86A00; --accent: #2457D6; --accent-ink: #FFFFFF; --good: #1B7F4F; --good-bg: #D9F0E4; --bad: #B8352A; --bad-bg: #F7DEDB;
+  --s: #1769C8; --e: #D2540C; --warn: #A86A00; --x1: #B8DDD6; --x2: #FFD9B8; --accent: #2457D6; --accent-ink: #FFFFFF; --good: #1B7F4F; --good-bg: #D9F0E4; --bad: #B8352A; --bad-bg: #F7DEDB;
   --display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
   --body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
@@ -112,6 +112,17 @@ body.host input[type="text"], body.host select { height: 46px; }
 .tbl.full { width: 100%; }
 .tbl.big { font-size: 34px; }
 .tbl.big th, .tbl.big td { padding: 10px 30px; }
+.goal { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+.goaltbl td.x1 { background: var(--x1); color: #14202C; }
+.goaltbl td.x2 { background: var(--x2); color: #14202C; }
+.goaltbl td { border-bottom-color: #FFFFFF; border-left: 2px solid #FFFFFF; }
+.legend { display: grid; gap: 8px; font-family: var(--mono); font-size: 14px; }
+body.host .legend { font-size: 22px; gap: 12px; }
+.legend span { display: flex; align-items: center; gap: 10px; }
+.legend i { width: 22px; height: 22px; border-radius: 4px; display: block; border: 1px solid rgba(20, 32, 44, 0.15); }
+body.host .legend i { width: 34px; height: 34px; }
+.legend i.x1 { background: var(--x1); }
+.legend i.x2 { background: var(--x2); }
 .tbl .w { color: var(--good); font-weight: 600; }
 .tbl .l { color: var(--bad); font-weight: 600; }
 .tbl .unk { color: var(--muted); }
@@ -2672,14 +2683,14 @@ var Core = (function () {
       yourName: "Your name", join: "Join", roomCode: "Room {code}", inLobby: "You are in, {name}", waitHost: "Waiting for the host to start the game.",
       noHost: "Cannot reach the host yet. Check the code and your connection.", inProgress: "A game is already in progress. Wait for the next one.",
       assigning: "Your device is being assigned…",
-      youHonest: "Your device is a {name}", honText: "It has {n} states. A strategy that beats a bit (more than 5/6) exists, and it is yours to find.",
+      youHonest: "Your device is a {name}", honText: "It has {n} states. A strategy that beats a bit (more than {k}) exists, and it is yours to find.",
       trayA: "Messages a go on states", trayB: "Questions b go on effects", trayTitle: "Drag the numbers onto the picture",
       sceneAria: "Picture of the state space and the effect space", sceneHint: "Drag the background to rotate, scroll or pinch to zoom. Dashed numbers mark the complementary effect (outcome x=2).",
       sceneHintFlat: "Scroll or pinch to zoom. Dashed numbers mark the complementary effect (outcome x=2).", resetView: "Reset view", fullScr: "Full screen", closeFull: "Close",
       lockNeed: "Place all five numbers first.", notPlaced: "not placed", resLines: "Lines: green = pair won, red = pair lost, yellow = partial. The number is the probability of winning that pair.",
       viewTitle: "Strategy of {name}", viewHint: "Click a name to see their strategy.", tapHint: "Tap a number, then tap a point, if dragging is awkward.", unitName: "unit effect", zeroName: "zero effect",
       setup: "Game setup", botsToAdd: "Bots to add", polyLabel: "Polygon", optLine: "Best possible score: {a} with this polygon, {b} with a classical bit.",
-      youImp: "You are the impostor", impText: "Your device is a classical bit, with two states (0 and 1) and two non-trivial effects. At best you score {k}/6. Nobody must find out.",
+      youImp: "You are the impostor", impText: "Your device is a classical bit, with two states (0 and 1) and two non-trivial effects. At best you score {k}. Nobody must find out.",
       closed: "The host closed this room.", clearRoom: "Clear room", rmBots: "Remove bots", fires0: "fires on 0", fires1: "fires on 1",
       stratTitle: "Your strategy", stratHint: "Drag each number onto a point of the picture, then lock your strategy.",
       lockedHint: "Locked. Waiting for the others. Unlock to change it.",
@@ -2711,14 +2722,14 @@ var Core = (function () {
       yourName: "Il tuo nome", join: "Entra", roomCode: "Stanza {code}", inLobby: "Sei dentro, {name}", waitHost: "In attesa che l'host avvii la partita.",
       noHost: "Non riesco ancora a raggiungere l'host. Controlla il codice e la connessione.", inProgress: "Una partita è già in corso. Aspetta la prossima.",
       assigning: "Il tuo dispositivo sta per essere assegnato…",
-      youHonest: "Il tuo dispositivo è un {name}", honText: "Ha {n} stati. Esiste una strategia che batte un bit (più di 5/6), e sta a te trovarla.",
+      youHonest: "Il tuo dispositivo è un {name}", honText: "Ha {n} stati. Esiste una strategia che batte un bit (più di {k}), e sta a te trovarla.",
       trayA: "I messaggi a vanno sugli stati", trayB: "Le domande b vanno sugli effetti", trayTitle: "Trascina i numeri sul disegno",
       sceneAria: "Disegno dello spazio degli stati e degli effetti", sceneHint: "Trascina lo sfondo per ruotare, rotella o pinch per zoomare. I numeri tratteggiati indicano l'effetto complementare (esito x=2).",
       sceneHintFlat: "Rotella o pinch per zoomare. I numeri tratteggiati indicano l'effetto complementare (esito x=2).", resetView: "Ripristina vista", fullScr: "Schermo intero", closeFull: "Chiudi",
       lockNeed: "Prima piazza tutti e cinque i numeri.", notPlaced: "non piazzato", resLines: "Linee: verde = coppia vinta, rossa = persa, gialla = parziale. Il numero è la probabilità di vincere quella coppia.",
       viewTitle: "Strategia di {name}", viewHint: "Clicca un nome per vedere la sua strategia.", tapHint: "Se trascinare è scomodo, tocca un numero e poi un punto.", unitName: "effetto unità", zeroName: "effetto nullo",
       setup: "Impostazioni della partita", botsToAdd: "Bot da aggiungere", polyLabel: "Poligono", optLine: "Miglior punteggio possibile: {a} con questo poligono, {b} con un bit classico.",
-      youImp: "Sei l'impostore", impText: "Il tuo dispositivo è un bit classico, con due stati (0 e 1) e due effetti non banali. Al massimo fai {k}/6. Nessuno deve accorgersene.",
+      youImp: "Sei l'impostore", impText: "Il tuo dispositivo è un bit classico, con due stati (0 e 1) e due effetti non banali. Al massimo fai {k}. Nessuno deve accorgersene.",
       closed: "L'host ha chiuso questa stanza.", clearRoom: "Svuota la stanza", rmBots: "Rimuovi i bot", fires0: "scatta su 0", fires1: "scatta su 1",
       stratTitle: "La tua strategia", stratHint: "Trascina ogni numero su un punto del disegno, poi blocca la strategia.",
       lockedHint: "Bloccata. In attesa degli altri. Sbloccala per modificarla.",
@@ -2771,8 +2782,8 @@ var Core = (function () {
   function fmtP(p) { return String(+(+p).toFixed(2)); }
   function isK6(P) { var k = P * 6; return Math.abs(k - Math.round(k)) < 1e-9; }
   function pct1(P) { return (Math.round(P * 1000) / 10) + '%'; }
-  function fracP(P) { return isK6(P) ? Math.round(P * 6) + '/6' : pct1(P); }
-  function pSub(P) { return isK6(P) ? Math.round(P * 100) + '%' : ''; }
+  function fracP(P) { return pct1(P); }
+  function pSub(P) { return ''; }
 
   /* ---------- network: MQTT over secure WebSocket via a public broker ---------- */
   var BROKERS = [
@@ -2835,7 +2846,7 @@ var Core = (function () {
   function buildPriv(id) {
     var r = H.roles[id];
     if (!r) return { v: 1, role: null };
-    return { v: 1, role: r.role, device: r.device, n: H.n, cap: Math.round(Core.best(curF(), Core.device('bit')).P * 6), result: H.results[id] || null };
+    return { v: 1, role: r.role, device: r.device, n: H.n, cap: pct1(Core.best(curF(), Core.device('bit')).P), result: H.results[id] || null };
   }
   var pubT = null, saveT = null;
   function publishPub(now) {
@@ -3051,9 +3062,9 @@ var Core = (function () {
   function joinLink() { return joinUrl() + '#' + H.room + (H.broker ? '~' + H.broker : ''); }
 
   function goalTable(F, big) {
-    var h = '<div class="scroll"><table class="tbl' + (big ? ' big' : '') + '"><tr><th></th><th>b=1</th><th>b=2</th></tr>';
-    for (var a = 0; a < 3; a++) h += '<tr><th>a=' + (a + 1) + '</th><td>' + F[a][0] + '</td><td>' + F[a][1] + '</td></tr>';
-    return h + '</table></div>';
+    var h = '<div class="goal"><div class="scroll"><table class="tbl goaltbl' + (big ? ' big' : '') + '"><tr><th></th><th>b=1</th><th>b=2</th></tr>';
+    for (var a = 0; a < 3; a++) h += '<tr><th>a=' + (a + 1) + '</th><td class="x' + F[a][0] + '">' + F[a][0] + '</td><td class="x' + F[a][1] + '">' + F[a][1] + '</td></tr>';
+    return h + '</table></div><div class="legend"><span><i class="x1"></i>x = 1</span><span><i class="x2"></i>x = 2</span></div></div>';
   }
   function pairCells(st) {
     var h = '', a, b;
@@ -3170,7 +3181,7 @@ var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-
     var pr = P.priv;
     if (!pr || !pr.role) return '<div class="card"><p class="hint">' + esc(t('assigning')) + '</p></div>';
     var imp = pr.role === 'impostor';
-    return '<div class="card role' + (imp ? ' imp' : '') + '">' + roleGlyph(imp, pr.n) + '<div><h2>' + esc(imp ? t('youImp') : t('youHonest', { name: polyName(pr.n) })) + '</h2><p>' + esc(imp ? t('impText', { k: pr.cap }) : t('honText', { n: pr.n })) + '</p></div></div>';
+    return '<div class="card role' + (imp ? ' imp' : '') + '">' + roleGlyph(imp, pr.n) + '<div><h2>' + esc(imp ? t('youImp') : t('youHonest', { name: polyName(pr.n) })) + '</h2><p>' + esc(imp ? t('impText', { k: pr.cap }) : t('honText', { n: pr.n, k: pr.cap })) + '</p></div></div>';
   }
   function editorCard(pub) {
     ensureStrat();
@@ -3377,13 +3388,13 @@ var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-
     var o = '', P2 = function (i) { return pr[i].X.toFixed(1) + ',' + pr[i].Y.toFixed(1); };
     Gm.faces.map(function (F) { return { F: F, d: F.f.reduce(function (a, i) { return a + pr[i].d; }, 0) / F.f.length }; }).sort(function (a, b) { return b.d - a.d; }).forEach(function (x) {
       var col = x.F.k === 's' ? 'var(--s)' : 'var(--e)';
-      o += '<polygon points="' + x.F.f.map(P2).join(' ') + '" fill="' + col + '" fill-opacity="0.10" stroke="' + col + '" stroke-width="1" stroke-opacity="0.6"/>';
+      o += '<polygon points="' + x.F.f.map(P2).join(' ') + '" fill="' + col + '" fill-opacity="' + (x.F.k === 's' ? '0.09' : '0.05') + '" stroke="' + col + '" stroke-width="1" stroke-opacity="' + (x.F.k === 's' ? '0.7' : '0.45') + '"/>';
     });
     Gm.lines.forEach(function (Ln) { o += '<polyline points="' + Ln.idx.map(P2).join(' ') + '" fill="none" stroke="var(--s)" stroke-width="2.5"/>'; });
     var hov = ctx.hover, want = ctx.kindWanted;
     pr.slice().sort(function (a, b) { return b.d - a.d; }).forEach(function (q) {
       var p = q.p, i = Gm.pts.indexOf(p), col = p.k === 's' ? 'var(--s)' : p.k === 'e' ? 'var(--e)' : 'var(--muted)';
-      var op = (0.55 + 0.45 * (dmax - q.d) / rg).toFixed(2), isHov = i === hov, cand = ctx.interactive && want && p.kind === want;
+      var op = (0.78 + 0.22 * (dmax - q.d) / rg).toFixed(2), isHov = i === hov, cand = ctx.interactive && want && p.kind === want;
       o += '<g opacity="' + op + '">';
       if (cand) o += '<circle cx="' + q.X.toFixed(1) + '" cy="' + q.Y.toFixed(1) + '" r="9" fill="none" stroke="' + col + '" stroke-width="1" stroke-dasharray="2 3"/>';
       if (isHov) o += '<circle cx="' + q.X.toFixed(1) + '" cy="' + q.Y.toFixed(1) + '" r="13" fill="var(--accent)" fill-opacity="0.22" stroke="var(--accent)" stroke-width="2.5"/>';
