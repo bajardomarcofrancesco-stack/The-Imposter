@@ -17,19 +17,6 @@
   --mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0E151D; --surface: #151F2A; --sunken: #1B2836; --ink: #E7EEF5; --muted: #98A9BA; --line: #2A3A4B;
-    --s: #7DA2FF; --e: #FF9A62; --warn: #E0B341; --accent: #7DA2FF; --accent-ink: #0E151D; --good: #4CC38A; --good-bg: #173628; --bad: #FF8478; --bad-bg: #3A1F1F;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --s: #7DA2FF; --e: #FF9A62; --warn: #E0B341;
-  --bg: #0E151D; --surface: #151F2A; --sunken: #1B2836; --ink: #E7EEF5; --muted: #98A9BA; --line: #2A3A4B;
-  --accent: #7DA2FF; --accent-ink: #0E151D; --good: #4CC38A; --good-bg: #173628; --bad: #FF8478; --bad-bg: #3A1F1F;
-  color-scheme: dark;
-}
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
@@ -75,7 +62,21 @@ body.host .btn { height: 46px; padding: 0 20px; }
 .btn.block { width: 100%; }
 .btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-input[type="text"], select { height: 40px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 0 10px; }
+input[type="text"], select { height: 40px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 0 10px; }
+select { appearance: none; -webkit-appearance: none; padding-right: 34px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23566879' stroke-width='1.8'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; cursor: pointer; }
+.setup { position: static !important; padding: 20px !important; margin-top: 0 !important; }
+.setup h2 { margin-bottom: 14px; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
+.fld { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.fld select { width: 100%; height: 48px; font-size: 16px; font-weight: 400; color: var(--ink); }
+.fld .inl { display: flex; gap: 8px; }
+.fld .inl select { flex: 1; min-width: 0; }
+.fld .inl .btn { height: 48px; }
+.startrow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+.btn.start { height: 54px; padding: 0 40px; font-size: 18px; border-radius: 8px; }
+.startrow .hint { flex: 1 1 160px; }
+.linkbtn { background: none; border: 0; color: var(--accent); font-weight: 600; cursor: pointer; padding: 8px 4px; text-decoration: underline; text-underline-offset: 3px; }
+.ctl { box-shadow: 0 -2px 14px rgba(20, 32, 44, 0.08); }
 input[type="text"] { min-width: 0; flex: 1 1 180px; }
 body.host input[type="text"], body.host select { height: 46px; }
 
@@ -179,7 +180,6 @@ body.noscroll { overflow: hidden; }
 <div class="wrap">
   <header class="top" id="top"></header>
   <div id="notice" hidden></div>
-  <div id="rules"></div>
   <div id="view"></div>
   <div id="controls"></div>
 </div>
@@ -2678,7 +2678,7 @@ var Core = (function () {
       sceneHintFlat: "Scroll or pinch to zoom. Dashed numbers mark the complementary effect (outcome x=2).", resetView: "Reset view", fullScr: "Full screen", closeFull: "Close",
       lockNeed: "Place all five numbers first.", notPlaced: "not placed", resLines: "Lines: green = pair won, red = pair lost, yellow = partial. The number is the probability of winning that pair.",
       viewTitle: "Strategy of {name}", viewHint: "Click a name to see their strategy.", tapHint: "Tap a number, then tap a point, if dragging is awkward.", unitName: "unit effect", zeroName: "zero effect",
-      polyLabel: "Polygon", optLine: "Best possible score: {a} with this polygon, {b} with a classical bit.",
+      setup: "Game setup", botsToAdd: "Bots to add", polyLabel: "Polygon", optLine: "Best possible score: {a} with this polygon, {b} with a classical bit.",
       youImp: "You are the impostor", impText: "Your device is a classical bit, with two states (0 and 1) and two non-trivial effects. At best you score {k}/6. Nobody must find out.",
       closed: "The host closed this room.", clearRoom: "Clear room", rmBots: "Remove bots", fires0: "fires on 0", fires1: "fires on 1",
       stratTitle: "Your strategy", stratHint: "Drag each number onto a point of the picture, then lock your strategy.",
@@ -2717,7 +2717,7 @@ var Core = (function () {
       sceneHintFlat: "Rotella o pinch per zoomare. I numeri tratteggiati indicano l'effetto complementare (esito x=2).", resetView: "Ripristina vista", fullScr: "Schermo intero", closeFull: "Chiudi",
       lockNeed: "Prima piazza tutti e cinque i numeri.", notPlaced: "non piazzato", resLines: "Linee: verde = coppia vinta, rossa = persa, gialla = parziale. Il numero è la probabilità di vincere quella coppia.",
       viewTitle: "Strategia di {name}", viewHint: "Clicca un nome per vedere la sua strategia.", tapHint: "Se trascinare è scomodo, tocca un numero e poi un punto.", unitName: "effetto unità", zeroName: "effetto nullo",
-      polyLabel: "Poligono", optLine: "Miglior punteggio possibile: {a} con questo poligono, {b} con un bit classico.",
+      setup: "Impostazioni della partita", botsToAdd: "Bot da aggiungere", polyLabel: "Poligono", optLine: "Miglior punteggio possibile: {a} con questo poligono, {b} con un bit classico.",
       youImp: "Sei l'impostore", impText: "Il tuo dispositivo è un bit classico, con due stati (0 e 1) e due effetti non banali. Al massimo fai {k}/6. Nessuno deve accorgersene.",
       closed: "L'host ha chiuso questa stanza.", clearRoom: "Svuota la stanza", rmBots: "Rimuovi i bot", fires0: "scatta su 0", fires1: "scatta su 1",
       stratTitle: "La tua strategia", stratHint: "Trascina ogni numero su un punto del disegno, poi blocca la strategia.",
@@ -3139,18 +3139,20 @@ var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-
     var ph = H.phase, h = '<div class="ctl">';
     function resetBtn(label) { return '<button type="button" class="btn ghost" data-act="reset">' + esc(G.confirmReset ? t('resetConfirm') : t(label)) + '</button>'; }
     if (ph === 'lobby') {
-      h += '<div class="row"><label for="nbots" class="lab" style="min-width:0">' + esc(t('addBots')) + '</label><select id="nbots" data-cfg="nbots">' +
+      h = '<div class="ctl setup"><h2>' + esc(t('setup')) + '</h2><div class="fields">' +
+        '<label class="fld"><span>' + esc(t('polyLabel')) + '</span><select id="nsel" data-cfg="n">' +
+        [3, 4, 5, 6, 7].map(function (n) { return '<option value="' + n + '"' + (H.n === n ? ' selected' : '') + '>n = ' + n + ' · ' + esc(polyName(n)) + '</option>'; }).join('') + '</select></label>' +
+        '<label class="fld"><span>' + esc(t('scoreFn')) + '</span><select id="fidx" data-cfg="fIdx">' +
+        FLIST.map(function (F, i) { return '<option value="' + i + '"' + (H.fIdx === i ? ' selected' : '') + '>' + (i === 0 ? 't7' : '#' + (i + 1)) + ' · ' + F.map(function (r) { return r.join(''); }).join(' · ') + '</option>'; }).join('') + '</select></label>' +
+        '<label class="fld"><span>' + esc(t('botsToAdd')) + '</span><div class="inl"><select id="nbots" data-cfg="nbots">' +
         [1, 2, 3, 5, 8, 9].map(function (n) { return '<option value="' + n + '"' + (+H.nbots === n ? ' selected' : '') + '>' + n + '</option>'; }).join('') +
-        '</select><button type="button" class="btn ghost" data-act="addbots">' + esc(t('add')) + '</button>' +
-        '<label for="nsel" class="lab" style="min-width:0">' + esc(t('polyLabel')) + '</label><select id="nsel" data-cfg="n">' +
-        [3, 4, 5, 6, 7].map(function (n) { return '<option value="' + n + '"' + (H.n === n ? ' selected' : '') + '>n=' + n + ' · ' + esc(polyName(n)) + '</option>'; }).join('') + '</select>' +
-        '<label for="fidx" class="lab" style="min-width:0">' + esc(t('scoreFn')) + '</label><select id="fidx" data-cfg="fIdx">' +
-        FLIST.map(function (F, i) { return '<option value="' + i + '"' + (H.fIdx === i ? ' selected' : '') + '>' + (i === 0 ? 't7: ' : '#' + (i + 1) + ': ') + F.map(function (r) { return r.join(''); }).join(' ') + '</option>'; }).join('') + '</select>' +
-        '<label for="brk" class="lab" style="min-width:0">' + esc(t('broker')) + '</label><select id="brk" data-cfg="broker">' +
-        BROKERS.map(function (b, i) { return '<option value="' + i + '"' + (H.broker === i ? ' selected' : '') + '>' + esc(b.name) + '</option>'; }).join('') + '</select>' +
-        '<button type="button" class="btn" data-act="start"' + (H.players.length < 3 ? ' disabled' : '') + '>' + esc(t('start')) + '</button></div>' +
-        '<div class="row"><button type="button" class="btn ghost small" data-act="rmbots">' + esc(t('rmBots')) + '</button><button type="button" class="btn ghost small" data-act="clear">' + esc(G.confirmClear ? t('resetConfirm') : t('clearRoom')) + '</button></div>' +
-        '<div class="row"><label for="codeIn" class="hint small">' + esc(t('haveCode')) + '</label><input id="codeIn" type="text" maxlength="5" autocomplete="off" placeholder="' + esc(t('codePh')) + '" style="flex:0 1 120px"><button type="button" class="btn ghost small" data-act="gocode">' + esc(t('go')) + '</button></div>';
+        '</select><button type="button" class="btn ghost" data-act="addbots">' + esc(t('add')) + '</button></div></label>' +
+        '<label class="fld"><span>' + esc(t('broker')) + '</span><select id="brk" data-cfg="broker">' +
+        BROKERS.map(function (b, i) { return '<option value="' + i + '"' + (H.broker === i ? ' selected' : '') + '>' + esc(b.name) + '</option>'; }).join('') + '</select></label></div>' +
+        '<div class="startrow"><button type="button" class="btn start" data-act="start"' + (H.players.length < 3 ? ' disabled' : '') + '>' + esc(t('start')) + '</button>' +
+        '<span class="hint">' + esc(t('nplayers', { n: H.players.length })) + (H.players.length < 3 ? ' · ' + esc(t('needThree')) : '') + '</span>' +
+        '<button type="button" class="linkbtn" data-act="rmbots">' + esc(t('rmBots')) + '</button>' +
+        '<button type="button" class="linkbtn" data-act="clear">' + esc(G.confirmClear ? t('resetConfirm') : t('clearRoom')) + '</button></div>';
     } else if (ph === 'strategy') {
       h += '<div class="row"><button type="button" class="btn" data-act="stats">' + esc(t('showStats')) + '</button>' + resetBtn('newGame') + '</div>';
     } else if (ph === 'stats') {
@@ -3241,22 +3243,12 @@ var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-
     setHTML($('top'), '<div class="brand">' + brandGlyph() + '<div><h1>' + esc(t('title')) + '</h1><p>' + esc(t('sub')) + '</p></div></div><div class="tools">' + chip +
       '<button class="btn ghost small" data-act="lang" type="button">' + esc(t('lang')) + '</button></div>');
   }
-  function renderRules() {
-    var ph = IS_HOST ? H.phase : (P.pub ? P.pub.phase : 'lobby');
-    var h = '<details class="rules"><summary>' + esc(t('rules')) + '</summary><ol><li>' + esc(t('r1')) + '</li><li>' + esc(t('r2')) + '</li><li>' + esc(t('r3')) + '</li><li>' + esc(t('r4')) + '</li></ol></details>';
-    var el = $('rules'), phaseChanged = el._ph !== ph;
-    if (el._h !== h || phaseChanged) {
-      var old = el.querySelector('details'), open = phaseChanged ? ph === 'lobby' : (old ? old.open : ph === 'lobby');
-      if (el._h !== h) { el.innerHTML = h; el._h = h; }
-      el.querySelector('details').open = open; el._ph = ph;
-    }
-  }
   var rq = false;
   function render() { if (DR) { pendingRender = true; return; } if (rq) return; rq = true; requestAnimationFrame(function () { rq = false; doRender(); }); }
   function doRender() {
     document.documentElement.lang = lang;
     document.body.className = IS_HOST ? 'host' : '';
-    renderTop(); renderRules();
+    renderTop();
     var n = $('notice'), warn = G.status === 'offline';
     n.hidden = !warn; n.className = 'notice warn'; n.textContent = warn ? t('offline') + ' · ' + (BROKERS[IS_HOST ? H.broker : HASH.broker] || BROKERS[0]).name : '';
     if (IS_HOST) { renderHostView(); renderHostControls(); }
