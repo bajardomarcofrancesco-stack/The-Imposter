@@ -115,7 +115,9 @@ body.host input[type="text"], body.host select { height: 46px; }
 .goal { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
 .goaltbl td.x1 { background: var(--x1); color: #14202C; }
 .goaltbl td.x2 { background: var(--x2); color: #14202C; }
-.goaltbl td { border-bottom-color: #FFFFFF; border-left: 2px solid #FFFFFF; }
+.goaltbl td { border-bottom-color: #FFFFFF; border-left: 2px solid #FFFFFF; min-width: 72px; height: 48px; }
+.tbl.big.goaltbl td { min-width: 130px; height: 80px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .legend { display: grid; gap: 8px; font-family: var(--mono); font-size: 14px; }
 body.host .legend { font-size: 22px; gap: 12px; }
 .legend span { display: flex; align-items: center; gap: 10px; }
@@ -3063,7 +3065,7 @@ var Core = (function () {
 
   function goalTable(F, big) {
     var h = '<div class="goal"><div class="scroll"><table class="tbl goaltbl' + (big ? ' big' : '') + '"><tr><th></th><th>b=1</th><th>b=2</th></tr>';
-    for (var a = 0; a < 3; a++) h += '<tr><th>a=' + (a + 1) + '</th><td class="x' + F[a][0] + '">' + F[a][0] + '</td><td class="x' + F[a][1] + '">' + F[a][1] + '</td></tr>';
+    for (var a = 0; a < 3; a++) h += '<tr><th>a=' + (a + 1) + '</th><td class="x' + F[a][0] + '" title="x = ' + F[a][0] + '"><span class="sr">x = ' + F[a][0] + '</span></td><td class="x' + F[a][1] + '" title="x = ' + F[a][1] + '"><span class="sr">x = ' + F[a][1] + '</span></td></tr>';
     return h + '</table></div><div class="legend"><span><i class="x1"></i>x = 1</span><span><i class="x2"></i>x = 2</span></div></div>';
   }
   function pairCells(st) {
