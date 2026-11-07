@@ -11,7 +11,7 @@
 /* Layout: one screen per phase. Host = projector view (big type, QR, table, leaderboard) with a slim control bar. Player = phone view, one card per step. */
 :root {
   --bg: #EDF1F5; --surface: #FFFFFF; --sunken: #E3E9EF; --ink: #14202C; --muted: #566879; --line: #CFD9E3;
-  --accent: #2457D6; --accent-ink: #FFFFFF; --good: #1B7F4F; --good-bg: #D9F0E4; --bad: #B8352A; --bad-bg: #F7DEDB;
+  --s: #2457D6; --e: #C8470C; --warn: #A86A00; --accent: #2457D6; --accent-ink: #FFFFFF; --good: #1B7F4F; --good-bg: #D9F0E4; --bad: #B8352A; --bad-bg: #F7DEDB;
   --display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
   --body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
@@ -20,11 +20,12 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0E151D; --surface: #151F2A; --sunken: #1B2836; --ink: #E7EEF5; --muted: #98A9BA; --line: #2A3A4B;
-    --accent: #7DA2FF; --accent-ink: #0E151D; --good: #4CC38A; --good-bg: #173628; --bad: #FF8478; --bad-bg: #3A1F1F;
+    --s: #7DA2FF; --e: #FF9A62; --warn: #E0B341; --accent: #7DA2FF; --accent-ink: #0E151D; --good: #4CC38A; --good-bg: #173628; --bad: #FF8478; --bad-bg: #3A1F1F;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
+  --s: #7DA2FF; --e: #FF9A62; --warn: #E0B341;
   --bg: #0E151D; --surface: #151F2A; --sunken: #1B2836; --ink: #E7EEF5; --muted: #98A9BA; --line: #2A3A4B;
   --accent: #7DA2FF; --accent-ink: #0E151D; --good: #4CC38A; --good-bg: #173628; --bad: #FF8478; --bad-bg: #3A1F1F;
   color-scheme: dark;
@@ -142,6 +143,35 @@ body.host input[type="text"], body.host select { height: 46px; }
 .ctl .row { margin-top: 0; }
 .ctl .row + .row { margin-top: 10px; }
 #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(16px, env(safe-area-inset-bottom, 0px)); z-index: 20; background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 6px; font-size: 14px; max-width: calc(100vw - 32px); }
+.stage { width: 100%; max-width: 560px; aspect-ratio: 1 / 1; margin: 0 auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; }
+body.host .stage { max-width: 680px; }
+.stage svg { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.stage svg text { fill: var(--ink); font-family: var(--mono); font-size: 12.5px; pointer-events: none; }
+.stage svg text.tkt { font-size: 10.5px; font-weight: 600; }
+.stage svg text.lnk { font-size: 12px; font-weight: 700; paint-order: stroke; stroke: var(--surface); stroke-width: 3.5px; stroke-linejoin: round; }
+.stage svg g.drag { cursor: grab; }
+.tray { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; margin: 12px 0 4px; }
+.tray .grp { display: flex; align-items: center; gap: 8px; }
+.tray .grp > span { font-size: 12px; color: var(--muted); }
+.chip2 { min-width: 54px; height: 46px; border-radius: 23px; border: 2px solid; background: var(--surface); font-family: var(--mono); font-size: 15px; font-weight: 600; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.chip2.a { border-color: var(--s); color: var(--s); }
+.chip2.b { border-color: var(--e); color: var(--e); }
+.chip2.placed { opacity: 0.4; }
+.chip2.sel.a { background: var(--s); color: var(--surface); }
+.chip2.sel.b { background: var(--e); color: var(--surface); }
+.chip2:disabled { cursor: not-allowed; }
+.fl { position: fixed; z-index: 60; transform: translate(-50%, -150%); min-width: 54px; height: 46px; padding: 0 12px; border-radius: 23px; border: 2px solid; background: var(--surface); display: grid; place-items: center; font-family: var(--mono); font-size: 15px; font-weight: 600; pointer-events: none; box-shadow: 0 4px 14px rgba(0,0,0,0.3); }
+.fl.a { border-color: var(--s); color: var(--s); }
+.fl.b { border-color: var(--e); color: var(--e); }
+.scenebar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-bottom: 8px; }
+.readout { font-family: var(--mono); font-size: 12.5px; color: var(--muted); display: grid; gap: 2px; margin-top: 8px; }
+.scenecard.full { position: fixed; inset: 0; z-index: 40; margin: 0; border-radius: 0; overflow: auto; background: var(--bg); padding: 12px max(12px, env(safe-area-inset-left, 0px)); }
+.scenecard.full .stage { max-width: none; width: min(100%, calc(100dvh - 250px)); }
+body.noscroll { overflow: hidden; }
+.hgrid2 { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .hgrid2 { grid-template-columns: minmax(0, 1fr); } }
+.nmbtn { font: inherit; font-weight: 600; background: none; border: 1px solid var(--line); border-radius: 6px; padding: 2px 10px; cursor: pointer; color: inherit; }
+.nmbtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 @media (prefers-reduced-motion: no-preference) { .bar i { transition: width 0.5s ease; } }
 </style>
 </head>
@@ -2488,7 +2518,7 @@ var Core = (function () {
     if (kind === 'bit') {
       D = { key: key, kind: 'bit', n: 2, ns: 2, ne: 4, zero: 2, unit: 3, tab: [[1, 0], [0, 1], [0, 0], [1, 1]], cmpl: [1, 0, 3, 2],
         effName: function (E) { return E < 2 ? '&epsilon;<sub>' + E + '</sub>' : (E === 2 ? '0' : 'u'); },
-        stName: function (j) { return String(j); } };
+        stName: function (j) { return '&sigma;<sub>' + j + '</sub>'; } };
     } else {
       var r2 = 1 / Math.cos(Math.PI / n), tab = [], k, j, cmpl = [], even = n % 2 === 0;
       for (k = 1; k <= n; k++) {
@@ -2643,10 +2673,15 @@ var Core = (function () {
       noHost: "Cannot reach the host yet. Check the code and your connection.", inProgress: "A game is already in progress. Wait for the next one.",
       assigning: "Your device is being assigned…",
       youHonest: "Your device is a {name}", honText: "It has {n} states. A strategy that beats a bit (more than 5/6) exists, and it is yours to find.",
+      trayA: "Messages a go on states", trayB: "Questions b go on effects", trayTitle: "Drag the numbers onto the picture",
+      sceneAria: "Picture of the state space and the effect space", sceneHint: "Drag the background to rotate, scroll or pinch to zoom. Dashed numbers mark the complementary effect (outcome x=2).",
+      sceneHintFlat: "Scroll or pinch to zoom. Dashed numbers mark the complementary effect (outcome x=2).", resetView: "Reset view", fullScr: "Full screen", closeFull: "Close",
+      lockNeed: "Place all five numbers first.", notPlaced: "not placed", resLines: "Lines: green = pair won, red = pair lost, yellow = partial. The number is the probability of winning that pair.",
+      viewTitle: "Strategy of {name}", viewHint: "Click a name to see their strategy.", tapHint: "Tap a number, then tap a point, if dragging is awkward.", unitName: "unit effect", zeroName: "zero effect",
       polyLabel: "Polygon", optLine: "Best possible score: {a} with this polygon, {b} with a classical bit.",
       youImp: "You are the impostor", impText: "Your device is a classical bit, with two states (0 and 1) and two non-trivial effects. At best you score {k}/6. Nobody must find out.",
       closed: "The host closed this room.", clearRoom: "Clear room", rmBots: "Remove bots", fires0: "fires on 0", fires1: "fires on 1",
-      stratTitle: "Your strategy", stratHint: "Choose a state for each message and a measurement for each question, then lock it in.",
+      stratTitle: "Your strategy", stratHint: "Drag each number onto a point of the picture, then lock your strategy.",
       lockedHint: "Locked. Waiting for the others. Unlock to change it.",
       encTitle: "Encoding (Alice)", encAria: "State prepared for message a={a}", measTitle: "Measurement (Bob)",
       measHint: "For each question b, pick the effect that gives outcome x=1. Outcome x=2 gets the complementary effect.", measAria: "Effect for question b={b}",
@@ -2677,10 +2712,15 @@ var Core = (function () {
       noHost: "Non riesco ancora a raggiungere l'host. Controlla il codice e la connessione.", inProgress: "Una partita è già in corso. Aspetta la prossima.",
       assigning: "Il tuo dispositivo sta per essere assegnato…",
       youHonest: "Il tuo dispositivo è un {name}", honText: "Ha {n} stati. Esiste una strategia che batte un bit (più di 5/6), e sta a te trovarla.",
+      trayA: "I messaggi a vanno sugli stati", trayB: "Le domande b vanno sugli effetti", trayTitle: "Trascina i numeri sul disegno",
+      sceneAria: "Disegno dello spazio degli stati e degli effetti", sceneHint: "Trascina lo sfondo per ruotare, rotella o pinch per zoomare. I numeri tratteggiati indicano l'effetto complementare (esito x=2).",
+      sceneHintFlat: "Rotella o pinch per zoomare. I numeri tratteggiati indicano l'effetto complementare (esito x=2).", resetView: "Ripristina vista", fullScr: "Schermo intero", closeFull: "Chiudi",
+      lockNeed: "Prima piazza tutti e cinque i numeri.", notPlaced: "non piazzato", resLines: "Linee: verde = coppia vinta, rossa = persa, gialla = parziale. Il numero è la probabilità di vincere quella coppia.",
+      viewTitle: "Strategia di {name}", viewHint: "Clicca un nome per vedere la sua strategia.", tapHint: "Se trascinare è scomodo, tocca un numero e poi un punto.", unitName: "effetto unità", zeroName: "effetto nullo",
       polyLabel: "Poligono", optLine: "Miglior punteggio possibile: {a} con questo poligono, {b} con un bit classico.",
       youImp: "Sei l'impostore", impText: "Il tuo dispositivo è un bit classico, con due stati (0 e 1) e due effetti non banali. Al massimo fai {k}/6. Nessuno deve accorgersene.",
       closed: "L'host ha chiuso questa stanza.", clearRoom: "Svuota la stanza", rmBots: "Rimuovi i bot", fires0: "scatta su 0", fires1: "scatta su 1",
-      stratTitle: "La tua strategia", stratHint: "Scegli uno stato per ogni messaggio e una misura per ogni domanda, poi bloccala.",
+      stratTitle: "La tua strategia", stratHint: "Trascina ogni numero su un punto del disegno, poi blocca la strategia.",
       lockedHint: "Bloccata. In attesa degli altri. Sbloccala per modificarla.",
       encTitle: "Codifica (Alice)", encAria: "Stato preparato per il messaggio a={a}", measTitle: "Misura (Bob)",
       measHint: "Per ogni domanda b scegli l'effetto che dà l'esito x=1. All'esito x=2 va l'effetto complementare.", measAria: "Effetto per la domanda b={b}",
@@ -2790,7 +2830,7 @@ var Core = (function () {
       return { id: p.id, name: p.name, bot: p.bot ? 1 : 0, locked: (p.bot || (s && s.locked)) ? 1 : 0 };
     });
     var showStats = H.phase === 'stats' || H.phase === 'vote' || H.phase === 'reveal';
-    return { v: 1, phase: H.phase, attempt: H.attempt, n: H.n, F: curF(), players: pl, stats: showStats ? H.stats : {}, voted: Object.keys(H.votes).length, reveal: H.phase === 'reveal' ? H.reveal : null, t: Date.now() };
+    return { v: 1, phase: H.phase, attempt: H.attempt, game: H.game || 0, n: H.n, F: curF(), players: pl, stats: showStats ? H.stats : {}, voted: Object.keys(H.votes).length, reveal: H.phase === 'reveal' ? H.reveal : null, t: Date.now() };
   }
   function buildPriv(id) {
     var r = H.roles[id];
@@ -2852,7 +2892,7 @@ var Core = (function () {
     H.players.forEach(function (p) {
       if (p.bot) { var st = Core.botInit({ D: hostDev(p.id), F: curF() }, Math.random, p.skill); H.subs[p.id] = { S: st.S, M: st.M, locked: 1 }; }
     });
-    H.phase = 'strategy'; H.attempt = 1;
+    H.phase = 'strategy'; H.attempt = 1; H.game = (H.game || 0) + 1;
     changed(true);
   }
   function hostShowStats() {
@@ -2892,6 +2932,7 @@ var Core = (function () {
     var max = Math.max.apply(null, Object.keys(tally).map(function (k) { return tally[k]; }).concat([0]));
     var top = Object.keys(tally).filter(function (k) { return tally[k] === max && max > 0; });
     H.reveal = { impostor: imp, tally: tally, honestWin: top.length === 1 && top[0] === imp };
+    G.viewPid = imp;
     H.phase = 'reveal';
     changed(true);
   }
@@ -2930,7 +2971,7 @@ var Core = (function () {
   function loadPlayer() {
     var key = 'wbit-p-' + HASH.room, s = null;
     try { s = JSON.parse(lsGet(key) || 'null'); } catch (e) {}
-    var p = { id: (s && s.id) || rnd(10), name: (s && s.name) || '', strat: (s && s.strat) || Core.defaultStrategy(Core.device('poly', 4)), locked: false, vote: null, pub: null, priv: null, seenAttempt: -1, key: key };
+    var p = { id: (s && s.id) || rnd(10), name: (s && s.name) || '', strat: (s && s.strat) || emptyStrat(), sel: null, lift: null, full: false, locked: false, vote: null, pub: null, priv: null, seenAttempt: -1, key: key };
     return p;
   }
   function saveP() { lsSet(P.key, JSON.stringify({ id: P.id, name: P.name, strat: P.strat })); }
@@ -2938,11 +2979,19 @@ var Core = (function () {
   var sT = null;
   function pushStrat(now) {
     clearTimeout(sT);
-    var f = function () { sendIn({ t: 'sub', S: P.strat.S.slice(), M: P.strat.M.slice(), locked: P.locked ? 1 : 0 }); saveP(); };
+    var f = function () { if (stratComplete()) sendIn({ t: 'sub', S: P.strat.S.slice(), M: P.strat.M.slice(), locked: P.locked ? 1 : 0 }); saveP(); };
     if (now) f(); else sT = setTimeout(f, 300);
   }
+  function emptyStrat() { return { S: [null, null, null], M: [null, null] }; }
+  function stratComplete() { return P.strat.S.every(function (v) { return v !== null && v !== undefined; }) && P.strat.M.every(function (v) { return v !== null && v !== undefined; }); }
   function PD() { return P.priv && P.priv.role ? devOf(P.priv.device, P.priv.n) : null; }
-  function ensureStrat() { var D = PD(); if (D && !Core.valid(P.strat, D)) { P.strat = Core.defaultStrategy(D); return true; } return false; }
+  function ensureStrat() {
+    var D = PD(); if (!D) return false;
+    var st = P.strat, ok = st && Array.isArray(st.S) && st.S.length === 3 && Array.isArray(st.M) && st.M.length === 2 &&
+      st.S.every(function (v) { return v === null || (Number.isInteger(v) && v >= 0 && v < D.ns); }) && st.M.every(function (v) { return v === null || (Number.isInteger(v) && v >= 0 && v < D.ne); });
+    if (!ok) { P.strat = emptyStrat(); return true; }
+    return false;
+  }
   function inList() { return !!(P.pub && P.pub.players.some(function (p) { return p.id === P.id; })); }
   function playerOnPub(m) {
     if (!m || m.v !== 1) return;
@@ -2950,8 +2999,9 @@ var Core = (function () {
     P.pub = m; G.noHostHint = false;
     var me = m.players.filter(function (p) { return p.id === P.id; })[0];
     if (first && !me && P.name && (m.phase === 'lobby' || m.phase === 'strategy')) sendIn({ t: 'join', name: P.name });
-    if (m.phase === 'strategy' && me && m.attempt !== P.seenAttempt) {
-      P.locked = first ? !!me.locked : false; P.seenAttempt = m.attempt; pushStrat(true);
+    if (m.phase === 'strategy' && me && (m.attempt !== P.seenAttempt || m.game !== P.seenGame)) {
+      if (!first && m.game !== P.seenGame) { P.strat = emptyStrat(); P.sel = null; }
+      P.locked = first ? !!me.locked : false; P.seenAttempt = m.attempt; P.seenGame = m.game; pushStrat(true);
     }
     if (m.phase === 'lobby' || m.phase === 'strategy') P.vote = null;
     render();
@@ -3034,10 +3084,11 @@ var Core = (function () {
         extra = '<button type="button" class="btn small' + (on ? '' : ' ghost') + '" data-act="vote" data-pid="' + esc(p.id) + '" aria-pressed="' + on + '">' + esc(t(on ? 'suspected' : 'suspect')) + '</button>';
       }
       if (pub.reveal) extra = '<span class="rt">' + esc(t('votes', { n: (pub.reveal.tally && pub.reveal.tally[p.id]) || 0 })) + '</span>';
-      if (!showStats) { h += '<div class="prow" style="grid-template-columns:minmax(0,1fr) auto"><div class="pname"><span class="nm">' + esc(p.name) + '</span>' + tags + '</div><span>' + extra + '</span></div>'; return; }
+var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-act="view" data-pid="' + esc(p.id) + '" aria-pressed="' + (o.viewPid === p.id) + '">' + esc(p.name) + '</button>' : '<span class="nm">' + esc(p.name) + '</span>';
+      if (!showStats) { h += '<div class="prow" style="grid-template-columns:minmax(0,1fr) auto"><div class="pname">' + nmEl + tags + '</div><span>' + extra + '</span></div>'; return; }
       var pct = s ? Math.round(s.P * 100) : 0;
       var hist = s && s.hist && s.hist.length > 1 ? '<span class="rt">' + s.hist.map(fracP).join(' → ') + '</span>' : '';
-      h += '<div class="prow"><div class="pname"><span class="nm">' + esc(p.name) + '</span>' + tags + extra + '</div>' +
+      h += '<div class="prow"><div class="pname">' + nmEl + tags + extra + '</div>' +
         '<div><div class="bar"><i style="width:' + pct + '%"></i></div><span class="rt"><b>' + (s ? fracP(s.P) : '—') + '</b>' + (s && pSub(s.P) ? ' · ' + pSub(s.P) : '') + '</span></div>' +
         '<div class="pgrid">' + pairCells(s) + '</div><div class="hist">' + hist + '</div></div>';
     });
@@ -3062,22 +3113,25 @@ var Core = (function () {
         '<div>' + boardHTML(pub) + optCard() + '</div></div>';
     } else if (pub.phase === 'strategy') {
       var done = pub.players.filter(function (p) { return p.locked; }).length;
-      h = '<div class="card"><div class="cardhead"><h2>' + esc(t('hStrat')) + '</h2><span class="hint">' + esc(t('attempt', { n: pub.attempt })) + '</span></div>' +
+      h = '<div class="hgrid2"><div class="card">' + sceneBlock('sc-host', 'h') + '<div class="scenebar" style="margin-top:8px"><button type="button" class="btn ghost small" data-act="resetview" data-v="h">' + esc(t('resetView')) + '</button></div><p class="hint small">' + esc(t('sceneHint')) + '</p></div>' +
+        '<div class="card"><div class="cardhead"><h2>' + esc(t('hStrat')) + '</h2><span class="hint">' + esc(t('attempt', { n: pub.attempt })) + '</span></div>' +
         '<h3>' + esc(t('goalTitle')) + '</h3>' + goalTable(pub.F, true) + '<p class="hint" style="margin-top:10px">' + esc(t('goalHint')) + '</p>' +
         '<h3>' + esc(t('lockedCount', { n: done, m: pub.players.length })) + '</h3><div class="plist">' +
-        pub.players.map(function (p) { return '<span class="pchip' + (p.locked ? ' done' : '') + '">' + esc(p.name) + (p.locked ? ' ✓' : ' …') + '</span>'; }).join('') + '</div></div>';
+        pub.players.map(function (p) { return '<span class="pchip' + (p.locked ? ' done' : '') + '">' + esc(p.name) + (p.locked ? ' ✓' : ' …') + '</span>'; }).join('') + '</div></div></div>';
     } else if (pub.phase === 'stats') {
       h = '<h2 style="margin-bottom:10px">' + esc(t('statsTitle')) + ' · ' + esc(t('attempt', { n: pub.attempt })) + '</h2>' + boardHTML(pub);
     } else if (pub.phase === 'vote') {
       var humans = H.players.filter(function (p) { return !p.bot; }).length;
       h = '<div class="card"><h2>' + esc(t('voteTitle')) + '</h2><p class="bigmsg" style="margin-top:8px">' + esc(t('votesCast', { n: pub.voted, m: humans })) + '</p></div>' + boardHTML(pub);
     } else {
-      h = resultCard(pub) + optCard();
+      var vp = pub.players.filter(function (p) { return p.id === G.viewPid; })[0];
+      h = resultCard(pub) + '<div class="card"><div class="cardhead"><h2>' + (vp ? esc(t('viewTitle', { name: vp.name })) : esc(t('viewHint'))) + '</h2><div class="scenebar"><button type="button" class="btn ghost small" data-act="resetview" data-v="h">' + esc(t('resetView')) + '</button></div></div>' +
+        sceneBlock('sc-host', 'h') + '<p class="hint small" style="margin-top:6px">' + esc(t('resLines')) + '</p></div>' + optCard();
       var mx = Math.max.apply(null, pub.players.map(function (p) { return (pub.reveal.tally && pub.reveal.tally[p.id]) || 0; }).concat([1]));
       h += '<div class="card"><h2>' + esc(t('tally')) + '</h2>' + pub.players.map(function (p) {
         var c = (pub.reveal.tally && pub.reveal.tally[p.id]) || 0;
         return '<div class="tallyrow"><span class="nm">' + esc(p.name) + '</span><div class="bar"><i style="width:' + Math.round(100 * c / mx) + '%"></i></div><span class="rt">' + c + '</span></div>';
-      }).join('') + '</div>' + boardHTML(pub);
+      }).join('') + '</div>' + boardHTML(pub, { viewable: true, viewPid: G.viewPid });
     }
     setHTML($('view'), h);
   }
@@ -3089,7 +3143,7 @@ var Core = (function () {
         [1, 2, 3, 5, 8, 9].map(function (n) { return '<option value="' + n + '"' + (+H.nbots === n ? ' selected' : '') + '>' + n + '</option>'; }).join('') +
         '</select><button type="button" class="btn ghost" data-act="addbots">' + esc(t('add')) + '</button>' +
         '<label for="nsel" class="lab" style="min-width:0">' + esc(t('polyLabel')) + '</label><select id="nsel" data-cfg="n">' +
-        [3, 4, 5, 6, 7, 8, 9, 10].map(function (n) { return '<option value="' + n + '"' + (H.n === n ? ' selected' : '') + '>n=' + n + ' · ' + esc(polyName(n)) + '</option>'; }).join('') + '</select>' +
+        [3, 4, 5, 6, 7].map(function (n) { return '<option value="' + n + '"' + (H.n === n ? ' selected' : '') + '>n=' + n + ' · ' + esc(polyName(n)) + '</option>'; }).join('') + '</select>' +
         '<label for="fidx" class="lab" style="min-width:0">' + esc(t('scoreFn')) + '</label><select id="fidx" data-cfg="fIdx">' +
         FLIST.map(function (F, i) { return '<option value="' + i + '"' + (H.fIdx === i ? ' selected' : '') + '>' + (i === 0 ? 't7: ' : '#' + (i + 1) + ': ') + F.map(function (r) { return r.join(''); }).join(' ') + '</option>'; }).join('') + '</select>' +
         '<label for="brk" class="lab" style="min-width:0">' + esc(t('broker')) + '</label><select id="brk" data-cfg="broker">' +
@@ -3118,29 +3172,29 @@ var Core = (function () {
   }
   function editorCard(pub) {
     ensureStrat();
-    var lock = P.locked, a, b, D = PD(), bit = D.kind === 'bit', n = D.n, k;
-    var h = '<div class="card"><h2>' + esc(t('stratTitle')) + '</h2><p class="hint">' + esc(t(lock ? 'lockedHint' : 'stratHint')) + '</p><h3>' + esc(t('encTitle')) + '</h3>';
-    for (a = 0; a < 3; a++) {
-      h += '<div class="line"><span class="lab">a = ' + (a + 1) + '</span><div class="seg" role="group" aria-label="' + esc(t('encAria', { a: a + 1 })) + '">';
-      for (k = 0; k < D.ns; k++) h += '<button type="button" class="opt" data-act="S" data-i="' + a + '" data-v="' + k + '" aria-pressed="' + (P.strat.S[a] === k) + '"' + (lock ? ' disabled' : '') + '>' + (bit ? bitGlyph(k === 1) : polyGlyph(n, k)) + '<span>' + D.stName(k) + '</span></button>';
-      h += '</div></div>';
-    }
-    h += '<h3>' + esc(t('measTitle')) + '</h3><p class="hint small" style="margin-bottom:8px">' + esc(t('measHint')) + (bit ? ' &epsilon;<sub>0</sub>: ' + esc(t('fires0')) + ', &epsilon;<sub>1</sub>: ' + esc(t('fires1')) + '.' : '') + '</p>';
-    for (b = 0; b < 2; b++) {
-      var Em = P.strat.M[b];
-      h += '<div class="line"><span class="lab">b = ' + (b + 1) + '</span><div class="seg" role="group" aria-label="' + esc(t('measAria', { b: b + 1 })) + '">';
-      for (k = 0; k < D.ne; k++) h += '<button type="button" class="opt" data-act="M" data-i="' + b + '" data-v="' + k + '" aria-pressed="' + (Em === k) + '"' + (lock ? ' disabled' : '') + '><span>' + D.effName(k) + '</span></button>';
-      h += '</div><div class="meas">M<sup>(' + (b + 1) + ')</sup> = { x=1: ' + D.effName(Em) + ' , x=2: ' + D.effName(D.cmpl[Em]) + ' }</div></div>';
-    }
+    var lock = P.locked, D = PD(), bit = D.kind === 'bit', done = stratComplete(), a, b;
+    var h = '<div class="card scenecard' + (P.full ? ' full' : '') + '"><div class="cardhead"><h2>' + esc(t('stratTitle')) + '</h2><div class="scenebar">' +
+      '<button type="button" class="btn ghost small" data-act="resetview" data-v="p">' + esc(t('resetView')) + '</button>' +
+      '<button type="button" class="btn ghost small" data-act="full">' + esc(t(P.full ? 'closeFull' : 'fullScr')) + '</button></div></div>' +
+      '<p class="hint small" style="margin-bottom:8px">' + esc(t(lock ? 'lockedHint' : 'stratHint')) + '</p>' + sceneBlock('sc-edit', 'p') +
+      '<p class="hint small" style="margin-top:6px">' + esc(t(bit ? 'sceneHintFlat' : 'sceneHint')) + ' ' + esc(t('tapHint')) + '</p>';
+    h += '<div class="tray"><div class="grp"><span>' + esc(t('trayA')) + '</span>';
+    for (a = 0; a < 3; a++) h += '<button type="button" class="chip2 a' + (P.strat.S[a] !== null ? ' placed' : '') + (P.sel === 'a' + a ? ' sel' : '') + '" data-tok="a' + a + '"' + (lock ? ' disabled' : '') + '>a' + (a + 1) + '</button>';
+    h += '</div><div class="grp"><span>' + esc(t('trayB')) + '</span>';
+    for (b = 0; b < 2; b++) h += '<button type="button" class="chip2 b' + (P.strat.M[b] !== null ? ' placed' : '') + (P.sel === 'b' + b ? ' sel' : '') + '" data-tok="b' + b + '"' + (lock ? ' disabled' : '') + '>b' + (b + 1) + '</button>';
+    h += '</div></div><div class="readout">';
+    for (a = 0; a < 3; a++) h += '<span>a=' + (a + 1) + ' &rarr; ' + (P.strat.S[a] === null ? esc(t('notPlaced')) : D.stName(P.strat.S[a])) + '</span>';
+    for (b = 0; b < 2; b++) { var Em = P.strat.M[b]; h += '<span>b=' + (b + 1) + ' &rarr; x=1: ' + (Em === null ? esc(t('notPlaced')) : D.effName(Em) + ', x=2: ' + D.effName(D.cmpl[Em])) + '</span>'; }
+    h += '</div>';
     h += '<h3>' + esc(t('goalTitle')) + '</h3>' + goalTable(pub.F) + '<p class="hint small" style="margin-top:8px">' + esc(t('goalHint')) + '</p>';
-    h += '<div class="row"><button type="button" class="btn block' + (lock ? ' ghost' : '') + '" data-act="lock">' + esc(t(lock ? 'unlock' : 'lock')) + '</button></div></div>';
+    h += '<div class="row"><button type="button" class="btn block' + (lock ? ' ghost' : '') + '" data-act="lock"' + (!lock && !done ? ' aria-disabled="true" style="opacity:.55"' : '') + '>' + esc(t(lock ? 'unlock' : 'lock')) + '</button></div></div>';
     return h;
   }
   function myResultCard() {
     var r = P.priv && P.priv.result, D = PD();
     if (!r || !D) return '';
     var h = '<div class="card"><h2>' + esc(t('yourResult')) + ' · ' + esc(t('attempt', { n: r.attempt })) + '</h2><p class="pbig" style="margin:10px 0 4px">' + fracP(r.P) + (pSub(r.P) ? '<small>' + pSub(r.P) + '</small>' : '') + '</p>';
-    h += '<h3>' + esc(t('pairsTitle')) + '</h3><div class="scroll"><table class="tbl full"><tr><th>' + esc(t('colPair')) + '</th><th>' + esc(t('colState')) + '</th><th>' + esc(t('colEffect')) + '</th><th>' + esc(t('colP')) + '</th><th>' + esc(t('colGoal')) + '</th><th>' + esc(t('colWin')) + '</th></tr>';
+    h += sceneBlock('sc-res', 'p') + '<div class="scenebar" style="margin-top:6px"><button type="button" class="btn ghost small" data-act="resetview" data-v="p">' + esc(t('resetView')) + '</button></div><p class="hint small">' + esc(t('resLines')) + '</p><h3>' + esc(t('pairsTitle')) + '</h3><div class="scroll"><table class="tbl full"><tr><th>' + esc(t('colPair')) + '</th><th>' + esc(t('colState')) + '</th><th>' + esc(t('colEffect')) + '</th><th>' + esc(t('colP')) + '</th><th>' + esc(t('colGoal')) + '</th><th>' + esc(t('colWin')) + '</th></tr>';
     r.detail.forEach(function (d) {
       h += '<tr><td>' + (d.a + 1) + ',' + (d.b + 1) + '</td><td>' + D.stName(d.j) + '</td><td>' + D.effName(d.E) + '</td><td>' + fmtP(d.p) + '</td><td>' + d.t + '</td><td class="' + (d.w > 1 - 1e-9 ? 'w' : d.w < 1e-9 ? 'l' : '') + '">' + (d.w > 1 - 1e-9 ? '✓' : d.w < 1e-9 ? '✗' : fmtP(d.w)) + '</td></tr>';
     });
@@ -3198,7 +3252,7 @@ var Core = (function () {
     }
   }
   var rq = false;
-  function render() { if (rq) return; rq = true; requestAnimationFrame(function () { rq = false; doRender(); }); }
+  function render() { if (DR) { pendingRender = true; return; } if (rq) return; rq = true; requestAnimationFrame(function () { rq = false; doRender(); }); }
   function doRender() {
     document.documentElement.lang = lang;
     document.body.className = IS_HOST ? 'host' : '';
@@ -3207,19 +3261,293 @@ var Core = (function () {
     n.hidden = !warn; n.className = 'notice warn'; n.textContent = warn ? t('offline') + ' · ' + (BROKERS[IS_HOST ? H.broker : HASH.broker] || BROKERS[0]).name : '';
     if (IS_HOST) { renderHostView(); renderHostControls(); }
     else { renderPlayerView(); setHTML($('controls'), ''); }
+    drawScenes();
   }
+
+  /* ---------- 3D scene: states (blue) and effects (orange) in the same R^3, as in the paper's Sec. 7.1 ---------- */
+  var SUBD = '₀₁₂₃₄₅₆₇₈₉';
+  function plain(html) {
+    return String(html).replace(/<sub>(\d+)<\/sub>/g, function (m, d) { return d.replace(/\d/g, function (c) { return SUBD.charAt(+c); }); }).replace(/&epsilon;/g, 'ε').replace(/&sigma;/g, 'σ');
+  }
+  function hull3(Pt) {
+    var m = Pt.length, faces = {}, eps = 1e-7, i, j, k, l;
+    function sb(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+    function cr(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+    function dt(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+    for (i = 0; i < m; i++) for (j = i + 1; j < m; j++) for (k = j + 1; k < m; k++) {
+      var nv = cr(sb(Pt[j], Pt[i]), sb(Pt[k], Pt[i])), L = Math.sqrt(dt(nv, nv));
+      if (L < 1e-6) continue;
+      nv = nv.map(function (x) { return x / L; });
+      var d = dt(nv, Pt[i]), pos = false, neg = false, on = [];
+      for (l = 0; l < m; l++) { var s = dt(nv, Pt[l]) - d; if (s > eps) pos = true; else if (s < -eps) neg = true; else on.push(l); if (pos && neg) break; }
+      if (pos && neg) continue;
+      var key = on.join(',');
+      if (!faces[key]) faces[key] = { on: on, nv: nv };
+    }
+    return Object.keys(faces).map(function (key) {
+      var f = faces[key], on = f.on, nv = f.nv;
+      var C = [0, 1, 2].map(function (c) { return on.reduce(function (a, i2) { return a + Pt[i2][c]; }, 0) / on.length; });
+      var u1 = sb(Pt[on[0]], C), l1 = Math.sqrt(dt(u1, u1)); u1 = u1.map(function (x) { return x / l1; });
+      var u2 = cr(nv, u1);
+      return on.map(function (i2) { return { i: i2, a: Math.atan2(dt(sb(Pt[i2], C), u2), dt(sb(Pt[i2], C), u1)) }; }).sort(function (p, q) { return p.a - q.a; }).map(function (o) { return o.i; });
+    });
+  }
+  var GEO = {};
+  function geoFor(D) {
+    if (GEO[D.key]) return GEO[D.key];
+    var n = D.n, S = [], Ev = [], j, k, A = Math.PI, G;
+    if (D.kind === 'bit') {
+      S = [[-1, 0, 1], [1, 0, 1]];
+      Ev = [[-0.5, 0, 0.5], [0.5, 0, 0.5], [0, 0, 0], [0, 0, 1]];
+    } else {
+      var r2 = 1 / Math.cos(A / n), r = Math.sqrt(r2);
+      for (j = 1; j <= n; j++) S.push([r * Math.cos(2 * j * A / n), r * Math.sin(2 * j * A / n), 1]);
+      if (n % 2 === 0) { for (k = 1; k <= n; k++) Ev.push([0.5 * r * Math.cos((2 * k - 1) * A / n), 0.5 * r * Math.sin((2 * k - 1) * A / n), 0.5]); }
+      else {
+        var c = 1 / (1 + r2), Gk = [];
+        for (k = 1; k <= n; k++) Gk.push([c * r * Math.cos(2 * k * A / n), c * r * Math.sin(2 * k * A / n), c]);
+        Ev = Gk.concat(Gk.map(function (g) { return [-g[0], -g[1], 1 - g[2]]; }));
+      }
+      Ev.push([0, 0, 0]); Ev.push([0, 0, 1]);
+    }
+    var ns = S.length, pts = [], faces = [], lines = [];
+    S.forEach(function (v, jj) { pts.push({ name: plain(D.stName(jj)), v: v, k: 's', kind: 's', idx: jj }); });
+    Ev.forEach(function (v, E) { pts.push({ name: plain(D.effName(E)), v: v, k: E >= D.zero ? 'n' : 'e', kind: 'e', idx: E }); });
+    if (D.kind === 'bit') {
+      lines.push({ idx: [0, 1], k: 's' });
+      faces.push({ f: [ns + 2, ns + 1, ns + 3, ns + 0], k: 'e' });
+    } else {
+      faces.push({ f: S.map(function (_, i) { return i; }), k: 's' });
+      hull3(Ev).forEach(function (f) { faces.push({ f: f.map(function (i) { return i + ns; }), k: 'e' }); });
+    }
+    var cc = [0, 0, 0.5], mx = 0;
+    pts.forEach(function (p) { mx = Math.max(mx, Math.sqrt(p.v[0] * p.v[0] + p.v[1] * p.v[1] + (p.v[2] - 0.5) * (p.v[2] - 0.5))); });
+    G = { pts: pts, faces: faces, lines: lines, c: cc, s: 205 / mx, ns: ns };
+    return (GEO[D.key] = G);
+  }
+  function rot3(v, c, yaw, pitch) {
+    var x = v[0] - c[0], y = v[1] - c[1], z = v[2] - c[2], ca = Math.cos(yaw), sa = Math.sin(yaw), cb = Math.cos(pitch), sb = Math.sin(pitch);
+    var x1 = x * ca - y * sa, y1 = x * sa + y * ca;
+    return [x1, z * cb + y1 * sb, y1 * cb - z * sb];
+  }
+  var SV0 = function () { return { yaw: -0.5, pitch: 0.5, zoom: 1, tx: 0, ty: 0 }; };
+  var SV = { p: SV0(), h: SV0() };
+  var DR = null, pendingRender = false;
+
+  function tokensFromDetail(detail) {
+    var tk = { S: [null, null, null], M: [null, null] };
+    detail.forEach(function (d) { tk.S[d.a] = d.j; tk.M[d.b] = d.E; });
+    return tk;
+  }
+  function sceneCtx(id) {
+    if (id === 'sc-edit') {
+      var D = PD(); if (!D || !P.pub) return null;
+      return { D: D, view: 'p', tokens: P.strat, interactive: !P.locked && P.pub.phase === 'strategy', sel: P.sel, lift: P.lift, hover: DR && DR.kind === 'tok' ? DR.hover : -1, kindWanted: DR && DR.kind === 'tok' ? DR.id.charAt(0) === 'a' ? 's' : 'e' : (P.sel ? P.sel.charAt(0) === 'a' ? 's' : 'e' : null) };
+    }
+    if (id === 'sc-res') {
+      var D2 = PD(), r = P.priv && P.priv.result; if (!D2 || !r) return null;
+      return { D: D2, view: 'p', tokens: tokensFromDetail(r.detail), links: r.detail, interactive: false };
+    }
+    if (id === 'sc-host') {
+      if (H.phase === 'reveal' && G.viewPid && H.results[G.viewPid]) {
+        var rr = H.results[G.viewPid];
+        return { D: hostDev(G.viewPid), view: 'h', tokens: tokensFromDetail(rr.detail), links: rr.detail, interactive: false };
+      }
+      return { D: devOf('sq', H.n), view: 'h', tokens: null, interactive: false };
+    }
+    return null;
+  }
+  function vbScale(el) { var r = el.getBoundingClientRect(); return Math.max(0.001, Math.min(r.width, r.height) / 500); }
+  function toVB(el, cx, cy) {
+    var r = el.getBoundingClientRect(), s = vbScale(el);
+    return { x: (cx - (r.left + (r.width - 500 * s) / 2)) / s, y: (cy - (r.top + (r.height - 500 * s) / 2)) / s, s: s };
+  }
+  function nearestPt(el, cx, cy, kind) {
+    var pr = el._pr; if (!pr) return -1;
+    var q = toVB(el, cx, cy), best = -1, bd = 1e9, lim = 44 / q.s;
+    pr.forEach(function (o, i) {
+      if (kind && o.p.kind !== kind) return;
+      var d = Math.sqrt((o.X - q.x) * (o.X - q.x) + (o.Y - q.y) * (o.Y - q.y));
+      if (d < bd) { bd = d; best = i; }
+    });
+    return bd <= lim ? best : -1;
+  }
+  function drawScene(el) {
+    var ctx = sceneCtx(el.id);
+    if (!ctx) { el.innerHTML = ''; el._pr = null; return; }
+    var D = ctx.D, Gm = geoFor(D), V = SV[ctx.view], bit = D.kind === 'bit', yaw = bit ? 0 : V.yaw, pitch = bit ? 0 : V.pitch;
+    var pr = Gm.pts.map(function (p) {
+      var q = rot3(p.v, Gm.c, yaw, pitch);
+      return { p: p, X: 250 + V.tx + V.zoom * Gm.s * q[0], Y: 250 + V.ty - V.zoom * Gm.s * q[1], d: q[2] };
+    });
+    el._pr = pr;
+    var dmin = Math.min.apply(null, pr.map(function (o) { return o.d; })), dmax = Math.max.apply(null, pr.map(function (o) { return o.d; })), rg = (dmax - dmin) || 1;
+    var o = '', P2 = function (i) { return pr[i].X.toFixed(1) + ',' + pr[i].Y.toFixed(1); };
+    Gm.faces.map(function (F) { return { F: F, d: F.f.reduce(function (a, i) { return a + pr[i].d; }, 0) / F.f.length }; }).sort(function (a, b) { return b.d - a.d; }).forEach(function (x) {
+      var col = x.F.k === 's' ? 'var(--s)' : 'var(--e)';
+      o += '<polygon points="' + x.F.f.map(P2).join(' ') + '" fill="' + col + '" fill-opacity="0.10" stroke="' + col + '" stroke-width="1" stroke-opacity="0.6"/>';
+    });
+    Gm.lines.forEach(function (Ln) { o += '<polyline points="' + Ln.idx.map(P2).join(' ') + '" fill="none" stroke="var(--s)" stroke-width="2.5"/>'; });
+    var hov = ctx.hover, want = ctx.kindWanted;
+    pr.slice().sort(function (a, b) { return b.d - a.d; }).forEach(function (q) {
+      var p = q.p, i = Gm.pts.indexOf(p), col = p.k === 's' ? 'var(--s)' : p.k === 'e' ? 'var(--e)' : 'var(--muted)';
+      var op = (0.55 + 0.45 * (dmax - q.d) / rg).toFixed(2), isHov = i === hov, cand = ctx.interactive && want && p.kind === want;
+      o += '<g opacity="' + op + '">';
+      if (cand) o += '<circle cx="' + q.X.toFixed(1) + '" cy="' + q.Y.toFixed(1) + '" r="9" fill="none" stroke="' + col + '" stroke-width="1" stroke-dasharray="2 3"/>';
+      if (isHov) o += '<circle cx="' + q.X.toFixed(1) + '" cy="' + q.Y.toFixed(1) + '" r="13" fill="var(--accent)" fill-opacity="0.22" stroke="var(--accent)" stroke-width="2.5"/>';
+      o += '<circle cx="' + q.X.toFixed(1) + '" cy="' + q.Y.toFixed(1) + '" r="' + (isHov ? 5.5 : 4) + '" fill="' + col + '"/>' +
+        '<text x="' + (q.X + 8).toFixed(1) + '" y="' + (q.Y + 4).toFixed(1) + '"' + (isHov ? ' style="font-weight:700"' : '') + '>' + esc(p.name) + '</text></g>';
+    });
+    if (ctx.links) {
+      ctx.links.forEach(function (d) {
+        var a = pr[d.j], b = pr[Gm.ns + d.E], w = d.w, col = w > 1 - 1e-9 ? 'var(--good)' : w < 1e-9 ? 'var(--bad)' : 'var(--warn)';
+        var mx = (a.X + b.X) / 2, my = (a.Y + b.Y) / 2;
+        o += '<line x1="' + a.X.toFixed(1) + '" y1="' + a.Y.toFixed(1) + '" x2="' + b.X.toFixed(1) + '" y2="' + b.Y.toFixed(1) + '" stroke="' + col + '" stroke-width="2" stroke-opacity="0.85"/>' +
+          '<text x="' + mx.toFixed(1) + '" y="' + (my + 4).toFixed(1) + '" text-anchor="middle" class="lnk" style="fill:' + col + '">' + (w > 1 - 1e-9 ? '1' : w < 1e-9 ? '0' : fmtP(w)) + '</text>';
+      });
+    }
+    if (ctx.tokens) {
+      var at = {};
+      function put(pi, tok) { (at[pi] = at[pi] || []).push(tok); }
+      var T = ctx.tokens, i2;
+      for (i2 = 0; i2 < 3; i2++) if (T.S[i2] !== null && T.S[i2] !== undefined && ctx.lift !== 'a' + i2) put(T.S[i2], { id: 'a' + i2, txt: 'a' + (i2 + 1), c: 's' });
+      for (i2 = 0; i2 < 2; i2++) if (T.M[i2] !== null && T.M[i2] !== undefined && ctx.lift !== 'b' + i2) {
+        put(Gm.ns + T.M[i2], { id: 'b' + i2, txt: 'b' + (i2 + 1), c: 'e' });
+        put(Gm.ns + D.cmpl[T.M[i2]], { id: 'g' + i2, txt: 'b' + (i2 + 1), c: 'e', ghost: true });
+      }
+      Object.keys(at).forEach(function (pi) {
+        var list = at[pi], q = pr[+pi];
+        list.forEach(function (tk, k) {
+          var cx = q.X + (k - (list.length - 1) / 2) * 25, cy = q.Y - 20, colv = tk.c === 's' ? 'var(--s)' : 'var(--e)', selc = ctx.sel === tk.id;
+          o += '<line x1="' + q.X.toFixed(1) + '" y1="' + q.Y.toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + (cy + 10).toFixed(1) + '" stroke="' + colv + '" stroke-width="1" opacity="0.6"/>';
+          if (tk.ghost) o += '<g><circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="11" fill="var(--surface)" fill-opacity="0.85" stroke="' + colv + '" stroke-width="1.6" stroke-dasharray="3 2.5"/><text x="' + cx.toFixed(1) + '" y="' + (cy + 3.6).toFixed(1) + '" text-anchor="middle" class="tkt" style="fill:' + colv + '">' + tk.txt + '</text></g>';
+          else o += '<g data-tok="' + tk.id + '"' + (ctx.interactive ? ' class="drag"' : '') + '><circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + (selc ? 13 : 11) + '" fill="' + (selc ? colv : 'var(--surface)') + '" stroke="' + colv + '" stroke-width="2.4"/><text x="' + cx.toFixed(1) + '" y="' + (cy + 3.6).toFixed(1) + '" text-anchor="middle" class="tkt" style="fill:' + (selc ? 'var(--surface)' : colv) + '">' + tk.txt + '</text></g>';
+        });
+      });
+    }
+    el.innerHTML = o;
+  }
+  function drawScenes() { var els = document.querySelectorAll('svg[data-scene]'), i; for (i = 0; i < els.length; i++) drawScene(els[i]); }
+  function sceneBlock(id, view, label) {
+    return '<div class="stage"><svg id="' + id + '" data-scene="' + view + '" viewBox="0 0 500 500" role="img" aria-label="' + esc(label || t('sceneAria')) + '"></svg></div>';
+  }
+
+  /* drag and drop of the numbered tokens, rotation and zoom of the scene */
+  var ptrs = {};
+  function tokKind(id) { return id.charAt(0) === 'a' ? 's' : 'e'; }
+  function editEl() { return $('sc-edit'); }
+  function placeToken(id, ptIdx) {
+    var D = PD(), Gm = geoFor(D), p = Gm.pts[ptIdx], i = +id.charAt(1);
+    if (!p || p.kind !== tokKind(id)) return;
+    if (id.charAt(0) === 'a') P.strat.S[i] = p.idx; else P.strat.M[i] = p.idx;
+    P.sel = null; stratChanged();
+  }
+  function unplaceToken(id) { var i = +id.charAt(1); if (id.charAt(0) === 'a') P.strat.S[i] = null; else P.strat.M[i] = null; P.sel = null; stratChanged(); }
+  function stratChanged() { if (stratComplete()) pushStrat(); else saveP(); render(); }
+  function makeFloat(id, x, y) {
+    var f = document.createElement('div');
+    f.className = 'fl ' + (id.charAt(0) === 'a' ? 'a' : 'b'); f.textContent = (id.charAt(0) === 'a' ? 'a' : 'b') + (+id.charAt(1) + 1);
+    f.style.left = x + 'px'; f.style.top = y + 'px'; document.body.appendChild(f); return f;
+  }
+  document.addEventListener('pointerdown', function (e) {
+    var tok = e.target.closest ? e.target.closest('[data-tok]') : null, sc = e.target.closest ? e.target.closest('svg[data-scene]') : null;
+    if (DR && !(DR.kind === 'rot' && sc && sc === DR.el) && DR.kind !== 'pinch') return;
+    if (tok && !IS_HOST && P.pub && P.pub.phase === 'strategy' && !P.locked && (sc ? sc.id === 'sc-edit' : true)) {
+      var id = tok.getAttribute('data-tok');
+      e.preventDefault();
+      try { (sc || tok).setPointerCapture(e.pointerId); } catch (x) {}
+      DR = { kind: 'tok', id: id, x0: e.clientX, y0: e.clientY, moved: false, hover: -1, fl: null, pid: e.pointerId, cap: sc || tok };
+      return;
+    }
+    if (sc) {
+      e.preventDefault();
+      try { sc.setPointerCapture(e.pointerId); } catch (x) {}
+      ptrs[e.pointerId] = { x: e.clientX, y: e.clientY, el: sc };
+      var ids = Object.keys(ptrs).filter(function (k) { return ptrs[k].el === sc; });
+      if (ids.length === 2) {
+        var a = ptrs[ids[0]], b = ptrs[ids[1]], V = SV[sc.getAttribute('data-scene')];
+        DR = { kind: 'pinch', el: sc, d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, z0: V.zoom, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, moved: true };
+      } else DR = { kind: 'rot', el: sc, x0: e.clientX, y0: e.clientY, lx: e.clientX, ly: e.clientY, moved: false, pid: e.pointerId };
+    }
+  });
+  document.addEventListener('pointermove', function (e) {
+    if (ptrs[e.pointerId]) { ptrs[e.pointerId].x = e.clientX; ptrs[e.pointerId].y = e.clientY; }
+    if (!DR) return;
+    if (DR.kind === 'tok') {
+      if (e.pointerId !== DR.pid) return;
+      if (!DR.moved && Math.abs(e.clientX - DR.x0) + Math.abs(e.clientY - DR.y0) > 6) { DR.moved = true; P.lift = DR.id; P.sel = null; DR.fl = makeFloat(DR.id, e.clientX, e.clientY); }
+      if (DR.moved) {
+        DR.fl.style.left = e.clientX + 'px'; DR.fl.style.top = e.clientY + 'px';
+        var h = nearestPt(editEl(), e.clientX, e.clientY, tokKind(DR.id));
+        DR.hover = h; drawScene(editEl());
+      }
+    } else if (DR.kind === 'rot') {
+      if (e.pointerId !== DR.pid) return;
+      var dx = e.clientX - DR.lx, dy = e.clientY - DR.ly; DR.lx = e.clientX; DR.ly = e.clientY;
+      if (Math.abs(e.clientX - DR.x0) + Math.abs(e.clientY - DR.y0) > 6) DR.moved = true;
+      if (!DR.moved) return;
+      var V2 = SV[DR.el.getAttribute('data-scene')], ctx = sceneCtx(DR.el.id);
+      if (ctx && ctx.D.kind === 'bit' || e.shiftKey) { var s = vbScale(DR.el); V2.tx += dx / s; V2.ty += dy / s; }
+      else { V2.yaw += dx * 0.01; V2.pitch = Math.max(-1.5, Math.min(1.5, V2.pitch + dy * 0.01)); }
+      drawScenes();
+    } else if (DR.kind === 'pinch') {
+      var ids = Object.keys(ptrs).filter(function (k) { return ptrs[k].el === DR.el; });
+      if (ids.length < 2) return;
+      var a = ptrs[ids[0]], b = ptrs[ids[1]], V3 = SV[DR.el.getAttribute('data-scene')], s2 = vbScale(DR.el);
+      var cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2, z2 = Math.max(0.6, Math.min(3.5, DR.z0 * Math.hypot(a.x - b.x, a.y - b.y) / DR.d0));
+      V3.tx += (cx - DR.cx) / s2; V3.ty += (cy - DR.cy) / s2; DR.cx = cx; DR.cy = cy;
+      var q = toVB(DR.el, cx, cy), f = z2 / V3.zoom;
+      V3.tx = (q.x - 250) - f * ((q.x - 250) - V3.tx); V3.ty = (q.y - 250) - f * ((q.y - 250) - V3.ty); V3.zoom = z2;
+      drawScenes();
+    }
+  });
+  function endDrag(e) {
+    delete ptrs[e.pointerId];
+    if (!DR) return;
+    var d = DR;
+    if (d.kind === 'pinch') { if (Object.keys(ptrs).length < 2) { DR = null; if (pendingRender) { pendingRender = false; render(); } } return; }
+    if (e.pointerId !== d.pid) return;
+    DR = null;
+    if (d.kind === 'tok') {
+      if (d.fl && d.fl.parentNode) d.fl.parentNode.removeChild(d.fl);
+      P.lift = null;
+      if (d.moved) {
+        var h = nearestPt(editEl(), e.clientX, e.clientY, tokKind(d.id));
+        if (h >= 0) placeToken(d.id, h); else unplaceToken(d.id);
+      } else { P.sel = P.sel === d.id ? null : d.id; render(); }
+    } else if (d.kind === 'rot' && !d.moved && d.el.id === 'sc-edit' && P.sel) {
+      var h2 = nearestPt(d.el, e.clientX, e.clientY, tokKind(P.sel));
+      if (h2 >= 0) placeToken(P.sel, h2); else { P.sel = null; render(); }
+    }
+    if (pendingRender) { pendingRender = false; render(); }
+  }
+  document.addEventListener('pointerup', endDrag);
+  document.addEventListener('pointercancel', function (e) { var d = DR; if (d && d.kind === 'tok' && d.fl && d.fl.parentNode) d.fl.parentNode.removeChild(d.fl); if (P) P.lift = null; delete ptrs[e.pointerId]; DR = null; render(); });
+  document.addEventListener('wheel', function (e) {
+    var sc = e.target.closest ? e.target.closest('svg[data-scene]') : null;
+    if (!sc) return;
+    e.preventDefault();
+    var V = SV[sc.getAttribute('data-scene')], z2 = Math.max(0.6, Math.min(3.5, V.zoom * Math.exp(-e.deltaY * 0.0015))), f = z2 / V.zoom, q = toVB(sc, e.clientX, e.clientY);
+    V.tx = (q.x - 250) - f * ((q.x - 250) - V.tx); V.ty = (q.y - 250) - f * ((q.y - 250) - V.ty); V.zoom = z2;
+    drawScenes();
+  }, { passive: false });
 
   /* ---------- events ---------- */
   document.addEventListener('click', function (e) {
+    var ck = e.target.closest ? e.target.closest('[data-tok]') : null;
+    if (ck && e.detail === 0 && !IS_HOST && P.pub && P.pub.phase === 'strategy' && !P.locked) { var cid = ck.getAttribute('data-tok'); P.sel = P.sel === cid ? null : cid; render(); return; }
     var el = e.target.closest ? e.target.closest('[data-act]') : null;
     if (!el || el.disabled) return;
     var a = el.getAttribute('data-act'), d = el.dataset;
     switch (a) {
       case 'lang': lang = lang === 'en' ? 'it' : 'en'; lsSet('wbit-lang', lang); render(); break;
       case 'join': { var inp = $('nick'), nm = cleanName(inp && inp.value); if (!nm) { if (inp) inp.focus(); break; } P.name = nm; saveP(); sendIn({ t: 'join', name: nm }); break; }
-      case 'S': if (!P.locked) { P.strat.S[+d.i] = +d.v; pushStrat(); render(); } break;
-      case 'M': if (!P.locked) { P.strat.M[+d.i] = +d.v; pushStrat(); render(); } break;
-      case 'lock': P.locked = !P.locked; pushStrat(true); render(); break;
+      case 'lock':
+        if (!P.locked && !stratComplete()) { toast(t('lockNeed')); break; }
+        P.locked = !P.locked; P.sel = null; pushStrat(true); render(); break;
+      case 'resetview': SV[d.v] = SV0(); drawScenes(); break;
+      case 'full': P.full = !P.full; document.body.classList.toggle('noscroll', P.full); render(); break;
+      case 'view': G.viewPid = d.pid; render(); break;
       case 'vote': P.vote = d.pid; sendIn({ t: 'vote', target: d.pid }); render(); break;
       case 'addbots': hostAddBots(); break;
       case 'rmbots': hostRmBots(); break;
@@ -3253,12 +3581,13 @@ var Core = (function () {
   function boot() {
     if (IS_HOST) {
       try { var s = JSON.parse(lsGet('wbit-host') || 'null'); H = s && s.room ? s : newHost(); } catch (e) { H = newHost(); }
-      if (!H.n) H.n = 4;
+      if (!H.n || H.n > 7) H.n = 4;
       saveHost(); render(); startHostNet();
     } else {
       P = loadPlayer(); saveP(); render(); startPlayerNet();
     }
   }
+  window.__wbit = { geoFor: geoFor, devOf: devOf };
   boot();
 })();
 </script>
