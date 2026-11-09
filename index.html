@@ -2521,7 +2521,7 @@ var qrcode = function() {
    Indices are 0-based here: state j -> s_{j+1}; effect index E: 0..n-1 = e_k (even) or g_k (odd); odd n: n..2n-1 = f_k; then the zero effect o and the unit effect u.
    A classical bit has states 0,1 and effects eps0, eps1, o, u. */
 var Core = (function () {
-  var T7 = [[2, 1], [1, 2], [2, 2]]; // F(a,b): rows a=1..3, columns b=1..2
+  var T7 = [[1, 1], [1, 2], [2, 2]]; // F(a,b): rows a=1..3, columns b=1..2
   function snap(v) { return Math.abs(v) < 1e-12 ? 0 : Math.abs(v - 1) < 1e-12 ? 1 : v; }
   var devCache = {};
   function device(kind, n) {
@@ -3404,10 +3404,23 @@ var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-
         '<text x="' + (q.X + 8).toFixed(1) + '" y="' + (q.Y + 4).toFixed(1) + '"' + (isHov ? ' style="font-weight:700"' : '') + '>' + esc(p.name) + '</text></g>';
     });
     if (ctx.links) {
-      ctx.links.forEach(function (d) {
-        var a = pr[d.j], b = pr[Gm.ns + d.E], w = d.w, col = w > 1 - 1e-9 ? 'var(--good)' : w < 1e-9 ? 'var(--bad)' : 'var(--warn)';
-        var mx = (a.X + b.X) / 2, my = (a.Y + b.Y) / 2;
-        o += '<line x1="' + a.X.toFixed(1) + '" y1="' + a.Y.toFixed(1) + '" x2="' + b.X.toFixed(1) + '" y2="' + b.Y.toFixed(1) + '" stroke="' + col + '" stroke-width="2" stroke-opacity="0.85"/>' +
+      var grp = {}, ls = [];
+      ctx.links.forEach(function (d) { var k = d.j + '_' + d.E; (grp[k] = grp[k] || []).push(d); });
+      Object.keys(grp).forEach(function (k) {
+        var g = grp[k];
+        g.sort(function (x, y) { return y.w - x.w; });
+        g.forEach(function (d, i) { ls.push({ d: d, i: i, n: g.length }); });
+      });
+      /* wins first, losses on top, so that a loss is never hidden */
+      ls.sort(function (x, y) { return y.d.w - x.d.w; });
+      ls.forEach(function (L) {
+        var d = L.d, a = pr[d.j], b = pr[Gm.ns + d.E], w = d.w, col = w > 1 - 1e-9 ? 'var(--good)' : w < 1e-9 ? 'var(--bad)' : 'var(--warn)';
+        var dx = b.X - a.X, dy = b.Y - a.Y, ln = Math.sqrt(dx * dx + dy * dy) || 1;
+        var off = (L.i - (L.n - 1) / 2) * 9, ox = -dy / ln * off, oy = dx / ln * off;
+        var x1 = a.X + ox, y1 = a.Y + oy, x2 = b.X + ox, y2 = b.Y + oy;
+        var t = 0.5 + (L.n > 1 ? (L.i - (L.n - 1) / 2) * 0.16 : 0);
+        var mx = x1 + (x2 - x1) * t, my = y1 + (y2 - y1) * t;
+        o += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '" stroke="' + col + '" stroke-width="2" stroke-opacity="0.85"/>' +
           '<text x="' + mx.toFixed(1) + '" y="' + (my + 4).toFixed(1) + '" text-anchor="middle" class="lnk" style="fill:' + col + '">' + (w > 1 - 1e-9 ? '1' : w < 1e-9 ? '0' : fmtP(w)) + '</text>';
       });
     }
