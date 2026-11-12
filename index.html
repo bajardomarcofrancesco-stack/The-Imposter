@@ -140,7 +140,13 @@ body.host .legend i { width: 34px; height: 34px; }
 .bar i { display: block; height: 100%; background: var(--accent); }
 .rt { font-family: var(--mono); font-size: 13px; color: var(--muted); }
 .rt b { color: var(--ink); font-weight: 500; font-size: 15px; }
-.pgrid { display: grid; grid-template-columns: repeat(3, 16px); gap: 2px; }
+.pgrid { display: grid; gap: 2px; }
+.xbtn { font: inherit; border: 1px solid var(--line); background: var(--surface); border-radius: 6px; width: 32px; height: 32px; cursor: pointer; color: var(--bad); line-height: 1; }
+.xbtn:hover { background: var(--bad-bg); }
+.pchip.btnchip { font: inherit; font-weight: 600; cursor: pointer; color: inherit; }
+.pchip.btnchip.done { color: var(--good); }
+.pchip.btnchip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+input.codein { text-transform: uppercase; font-family: var(--mono); letter-spacing: 0.15em; font-size: 20px; }
 .pc { width: 16px; height: 16px; display: grid; place-items: center; font-size: 11px; line-height: 1; border-radius: 3px; font-family: var(--mono); }
 .pc.w { background: var(--good-bg); color: var(--good); }
 .pc.l { background: var(--bad-bg); color: var(--bad); }
@@ -2521,7 +2527,9 @@ var qrcode = function() {
    Indices are 0-based here: state j -> s_{j+1}; effect index E: 0..n-1 = e_k (even) or g_k (odd); odd n: n..2n-1 = f_k; then the zero effect o and the unit effect u.
    A classical bit has states 0,1 and effects eps0, eps1, o, u. */
 var Core = (function () {
-  var T7 = [[1, 1], [1, 2], [2, 2]]; // F(a,b): rows a=1..3, columns b=1..2
+  var NB = 2; /*@NB@*/ // number of measurements b (2: the 3x2 test, 3: the hardest 3x3 test)
+  var NP = 3 * NB; // number of (a,b) pairs
+  var T7 = NB === 2 ? [[1, 1], [1, 2], [2, 2]] : [[1, 1, 1], [1, 2, 2], [2, 1, 2]]; // F(a,b): rows a=1..3, columns b=1..NB
   function snap(v) { return Math.abs(v) < 1e-12 ? 0 : Math.abs(v - 1) < 1e-12 ? 1 : v; }
   var devCache = {};
   function device(kind, n) {
@@ -2552,27 +2560,28 @@ var Core = (function () {
     return (devCache[key] = D);
   }
   function p1(D, E, j) { return D.tab[E][j]; }
-  function defaultStrategy(D) { return { S: [0, 1 % D.ns, 2 % D.ns], M: [0, 1] }; }
+  function defaultStrategy(D) { var M = [], b; for (b = 0; b < NB; b++) M.push(b % D.ne); return { S: [0, 1 % D.ns, 2 % D.ns], M: M }; }
   function valid(st, D) {
     function ok(a, len, k) { return Array.isArray(a) && a.length === len && a.every(function (x) { return Number.isInteger(x) && x >= 0 && x < k; }); }
-    return !!st && ok(st.S, 3, D.ns) && ok(st.M, 2, D.ne);
+    return !!st && ok(st.S, 3, D.ns) && ok(st.M, NB, D.ne);
   }
   function pWin(F, st, D, a, b) { var p = D.tab[st.M[b]][st.S[a]]; return F[a][b] === 1 ? p : 1 - p; }
   function avgP(F, st, D) {
     var s = 0, a, b;
-    for (a = 0; a < 3; a++) for (b = 0; b < 2; b++) s += pWin(F, st, D, a, b);
-    return s / 6;
+    for (a = 0; a < 3; a++) for (b = 0; b < NB; b++) s += pWin(F, st, D, a, b);
+    return s / NP;
   }
   // exact evaluation: per-pair probabilities, detail rows and the effect values it reveals
   function evaluate(F, st, D) {
-    var pairs = [[0, 0], [0, 0], [0, 0]], detail = [], obs = {}, tot = 0, a, b;
-    for (a = 0; a < 3; a++) for (b = 0; b < 2; b++) {
+    var pairs = [], detail = [], obs = {}, tot = 0, a, b;
+    for (a = 0; a < 3; a++) { pairs.push([]); for (b = 0; b < NB; b++) pairs[a].push(0); }
+    for (a = 0; a < 3; a++) for (b = 0; b < NB; b++) {
       var j = st.S[a], E = st.M[b], p = D.tab[E][j], w = F[a][b] === 1 ? p : 1 - p;
       pairs[a][b] = w; tot += w;
       if (E < D.zero) obs[E + '-' + j] = p;
       detail.push({ a: a, b: b, j: j, E: E, p: p, t: F[a][b], w: w });
     }
-    return { P: tot / 6, pairs: pairs, detail: detail, obs: obs };
+    return { P: tot / NP, pairs: pairs, detail: detail, obs: obs };
   }
 
   var cache = {};
@@ -2583,28 +2592,36 @@ var Core = (function () {
     var ns = D.ns, ne = D.ne, tab = D.tab, bestP = -1, all = [], S = [0, 0, 0], s0, s1, s2, a, b, E;
     for (s0 = 0; s0 < ns; s0++) for (s1 = 0; s1 < ns; s1++) for (s2 = 0; s2 < ns; s2++) {
       S[0] = s0; S[1] = s1; S[2] = s2;
-      var mx = [-1, -1], arg = [[], []];
-      for (b = 0; b < 2; b++) for (E = 0; E < ne; E++) {
+      var mx = [], arg = [];
+      for (b = 0; b < NB; b++) { mx.push(-1); arg.push([]); }
+      for (b = 0; b < NB; b++) for (E = 0; E < ne; E++) {
         var v = 0;
         for (a = 0; a < 3; a++) { var p = tab[E][S[a]]; v += F[a][b] === 1 ? p : 1 - p; }
         if (v > mx[b] + 1e-9) { mx[b] = v; arg[b] = [E]; } else if (Math.abs(v - mx[b]) <= 1e-9) arg[b].push(E);
       }
-      var P = (mx[0] + mx[1]) / 6;
+      var P = 0;
+      for (b = 0; b < NB; b++) P += mx[b];
+      P /= NP;
       if (P > bestP + 1e-9) { bestP = P; all = []; }
-      if (Math.abs(P - bestP) <= 1e-9) arg[0].forEach(function (m0) { arg[1].forEach(function (m1) { all.push({ S: S.slice(), M: [m0, m1] }); }); });
+      if (Math.abs(P - bestP) <= 1e-9) {
+        var combos = [[]];
+        for (b = 0; b < NB; b++) combos = [].concat.apply([], combos.map(function (c) { return arg[b].map(function (m) { return c.concat([m]); }); }));
+        combos.forEach(function (M) { all.push({ S: S.slice(), M: M }); });
+      }
     }
     return (cache[key] = { P: bestP, all: all });
   }
 
   function fFromMask(mask) {
-    var F = [[0, 0], [0, 0], [0, 0]], a, b;
-    for (a = 0; a < 3; a++) for (b = 0; b < 2; b++) F[a][b] = 1 + ((mask >> (a * 2 + b)) & 1);
+    var F = [], a, b;
+    for (a = 0; a < 3; a++) { F.push([]); for (b = 0; b < NB; b++) F[a].push(1 + ((mask >> (a * NB + b)) & 1)); }
     return F;
   }
   // score functions where a classical bit tops out at exactly 5/6 (a polygon with n >= 3 then always does better). t7 first.
   var listCache = null;
   function listF() {
     if (listCache) return listCache;
+    if (NB === 3) return (listCache = [T7]); // up to row/column permutations and column relabelling the hardest 3x3 test is unique (bit max 7/9)
     var bit = device('bit'), out = [], m, t7 = JSON.stringify(T7);
     for (m = 0; m < 64; m++) { var F = fFromMask(m); if (Math.abs(best(F, bit).P - 5 / 6) < 1e-9 && JSON.stringify(F) !== t7) out.push(F); }
     return (listCache = [T7].concat(out));
@@ -2613,7 +2630,7 @@ var Core = (function () {
   function diffCount(a, b) {
     var d = 0, i;
     for (i = 0; i < 3; i++) if (a.S[i] !== b.S[i]) d++;
-    for (i = 0; i < 2; i++) if (a.M[i] !== b.M[i]) d++;
+    for (i = 0; i < NB; i++) if (a.M[i] !== b.M[i]) d++;
     return d;
   }
   // one step of a bot: move one component toward the closest optimal strategy, or mutate a bit
@@ -2624,21 +2641,22 @@ var Core = (function () {
     for (i = 1; i < info.all.length; i++) if (diffCount(st, info.all[i]) < diffCount(st, tgt)) tgt = info.all[i];
     var diffs = [];
     for (i = 0; i < 3; i++) if (st.S[i] !== tgt.S[i]) diffs.push(['S', i]);
-    for (i = 0; i < 2; i++) if (st.M[i] !== tgt.M[i]) diffs.push(['M', i]);
+    for (i = 0; i < NB; i++) if (st.M[i] !== tgt.M[i]) diffs.push(['M', i]);
     var out = { S: st.S.slice(), M: st.M.slice() };
     if (diffs.length && rng() < learn) {
       var d = diffs[(rng() * diffs.length) | 0];
       out[d[0]][d[1]] = tgt[d[0]][d[1]];
     } else if (rng() < 0.1) {
-      var k = (rng() * 5) | 0;
+      var k = (rng() * (3 + NB)) | 0;
       if (k < 3) out.S[k] = (rng() * D.ns) | 0; else out.M[k - 3] = (rng() * D.ne) | 0;
     }
     return out;
   }
   // random start, then `skill` (0..1) decides how many components it fixes towards an optimum
   function botInit(role, rng, skill) {
-    var D = role.D, st = { S: [(rng() * D.ns) | 0, (rng() * D.ns) | 0, (rng() * D.ns) | 0], M: [(rng() * D.ne) | 0, (rng() * D.ne) | 0] };
-    var n = Math.round(skill * 5), i;
+    var D = role.D, st = { S: [(rng() * D.ns) | 0, (rng() * D.ns) | 0, (rng() * D.ns) | 0], M: [] };
+    var n = Math.round(skill * (3 + NB)), i;
+    for (i = 0; i < NB; i++) st.M.push((rng() * D.ne) | 0);
     for (i = 0; i < n; i++) st = botStep(st, role, rng, 1);
     return st;
   }
@@ -2654,7 +2672,7 @@ var Core = (function () {
     return worst.length ? worst[(rng() * worst.length) | 0] : null;
   }
 
-  return { T7: T7, device: device, p1: p1, defaultStrategy: defaultStrategy, valid: valid, pWin: pWin, avgP: avgP, evaluate: evaluate,
+  return { NB: NB, T7: T7, device: device, p1: p1, defaultStrategy: defaultStrategy, valid: valid, pWin: pWin, avgP: avgP, evaluate: evaluate,
     best: best, listF: listF, fFromMask: fFromMask, botStep: botStep, botInit: botInit, botVote: botVote };
 })();
 
@@ -2673,12 +2691,12 @@ var Core = (function () {
       r2: "Alice gets a message a in {1,2,3} and prepares one of your states. Bob gets a question b in {1,2} and measures. You choose which state goes with each a and which measurement with each b.",
       r3: "Your score is the average probability of success over the six pairs (a,b): the chance that Bob's outcome x equals the goal F(a,b). A classical bit can never beat 5/6. A polygon can, but the more vertices it has, the lower its best score falls.",
       r4: "When everyone has locked a strategy the statistics appear. Compare them, then vote on who holds the bit.",
-      scan: "Scan to join", orType: "or open {url} and type the code", nplayers: "{n} players", players: "Players", nobody: "Nobody has joined yet.",
+      scan: "Scan to join", orType: "or open {url}, press \u201cJoin with a code\u201d and type the code", nplayers: "{n} players", players: "Players", nobody: "Nobody has joined yet.",
       addBots: "Add bots", add: "Add", scoreFn: "Score function", broker: "Relay", start: "Start game", needThree: "At least 3 players are needed.",
-      haveCode: "Have a code?", go: "Join", codePh: "Code",
+      haveCode: "Have a code?", go: "Join", codePh: "Code", joinPc: "Join with a code", joinHere: "Join a game", codeHelp: "Type the 5-letter code shown on the projector.", codeBroker: "Code to type: {c}", removeP: "Remove", removedMsg: "The host removed you from this room.", rejoin: "Join again", viewBot: "Click a bot to see its strategy.",
       hStrat: "Choose your strategy on your device", goalTitle: "Goal F(a,b)", goalHint: "A round is won when Bob's outcome x equals F(a,b).",
       lockedCount: "{n} of {m} strategies locked", showStats: "Show statistics", another: "Another attempt", openVote: "Open voting",
-      statsTitle: "Statistics", attempt: "Attempt {n}", boardHint: "Score = average success probability over the six pairs. Grid: columns a=1..3, rows b=1..2.",
+      statsTitle: "Statistics", attempt: "Attempt {n}", boardHint: "Score = average success probability over the {pairs} pairs. Grid: rows a=1..3, columns b={brange}.",
       voteTitle: "Who has the bit?", votesCast: "Votes cast: {n} of {m}", reveal: "Reveal the impostor", newGame: "New game", resetConfirm: "Click again to confirm",
       resultTitle: "The bit was {name}", honestWin: "The honest players found the impostor.", impWin: "The impostor got away.", tally: "Votes", votes: "{n} votes",
       impTag: "impostor", you: "you", bot: "bot", locked: "locked",
@@ -2689,7 +2707,7 @@ var Core = (function () {
       trayA: "Messages a go on states", trayB: "Questions b go on effects", trayTitle: "Drag the numbers onto the picture",
       sceneAria: "Picture of the state space and the effect space", sceneHint: "Drag the background to rotate, scroll or pinch to zoom. Dashed numbers mark the complementary effect (outcome x=2).",
       sceneHintFlat: "Scroll or pinch to zoom. Dashed numbers mark the complementary effect (outcome x=2).", resetView: "Reset view", fullScr: "Full screen", closeFull: "Close",
-      lockNeed: "Place all five numbers first.", notPlaced: "not placed", resLines: "Lines: green = pair won, red = pair lost, yellow = partial. The number is the probability of winning that pair.",
+      lockNeed: "Place all {toks} numbers first.", notPlaced: "not placed", resLines: "Lines: green = pair won, red = pair lost, yellow = partial. The number is the probability of winning that pair.",
       viewTitle: "Strategy of {name}", viewHint: "Click a name to see their strategy.", tapHint: "Tap a number, then tap a point, if dragging is awkward.", unitName: "unit effect", zeroName: "zero effect",
       setup: "Game setup", botsToAdd: "Bots to add", polyLabel: "Polygon", optLine: "Best possible score: {a} with this polygon, {b} with a classical bit.",
       youImp: "You are the impostor", impText: "Your device is a classical bit, with two states (0 and 1) and two non-trivial effects. At best you score {k}. Nobody must find out.",
@@ -2712,12 +2730,12 @@ var Core = (function () {
       r2: "Alice riceve un messaggio a in {1,2,3} e prepara uno dei tuoi stati. Bob riceve una domanda b in {1,2} e misura. Scegli quale stato associare a ogni a e quale misura a ogni b.",
       r3: "Il tuo punteggio è la probabilità media di successo sulle sei coppie (a,b): la probabilità che l'esito x di Bob coincida con l'obiettivo F(a,b). Un bit classico non supera mai 5/6. Un poligono sì, ma più vertici ha, più il suo punteggio migliore scende.",
       r4: "Quando tutti hanno bloccato una strategia compaiono le statistiche. Confrontatele, poi votate chi ha il bit.",
-      scan: "Inquadra per entrare", orType: "oppure apri {url} e scrivi il codice", nplayers: "{n} giocatori", players: "Giocatori", nobody: "Nessuno è ancora entrato.",
+      scan: "Inquadra per entrare", orType: "oppure apri {url}, premi \u201cEntra con un codice\u201d e scrivi il codice", nplayers: "{n} giocatori", players: "Giocatori", nobody: "Nessuno è ancora entrato.",
       addBots: "Aggiungi bot", add: "Aggiungi", scoreFn: "Funzione di punteggio", broker: "Relay", start: "Avvia partita", needThree: "Servono almeno 3 giocatori.",
-      haveCode: "Hai un codice?", go: "Entra", codePh: "Codice",
+      haveCode: "Hai un codice?", go: "Entra", codePh: "Codice", joinPc: "Entra con un codice", joinHere: "Entra in una partita", codeHelp: "Scrivi il codice di 5 lettere mostrato sul proiettore.", codeBroker: "Codice da scrivere: {c}", removeP: "Rimuovi", removedMsg: "L'host ti ha rimosso da questa stanza.", rejoin: "Entra di nuovo", viewBot: "Clicca un bot per vedere la sua strategia.",
       hStrat: "Scegli la tua strategia sul tuo dispositivo", goalTitle: "Obiettivo F(a,b)", goalHint: "Un round è vinto quando l'esito x di Bob è uguale a F(a,b).",
       lockedCount: "{n} strategie bloccate su {m}", showStats: "Mostra le statistiche", another: "Un altro tentativo", openVote: "Apri la votazione",
-      statsTitle: "Statistiche", attempt: "Tentativo {n}", boardHint: "Punteggio = probabilità media di successo sulle sei coppie. Griglia: colonne a=1..3, righe b=1..2.",
+      statsTitle: "Statistiche", attempt: "Tentativo {n}", boardHint: "Punteggio = probabilità media di successo sulle {pairs} coppie. Griglia: righe a=1..3, colonne b={brange}.",
       voteTitle: "Chi ha il bit?", votesCast: "Voti espressi: {n} su {m}", reveal: "Rivela l'impostore", newGame: "Nuova partita", resetConfirm: "Clicca ancora per confermare",
       resultTitle: "Il bit era {name}", honestWin: "I giocatori onesti hanno trovato l'impostore.", impWin: "L'impostore l'ha fatta franca.", tally: "Voti", votes: "{n} voti",
       impTag: "impostore", you: "tu", bot: "bot", locked: "bloccata",
@@ -2728,7 +2746,7 @@ var Core = (function () {
       trayA: "I messaggi a vanno sugli stati", trayB: "Le domande b vanno sugli effetti", trayTitle: "Trascina i numeri sul disegno",
       sceneAria: "Disegno dello spazio degli stati e degli effetti", sceneHint: "Trascina lo sfondo per ruotare, rotella o pinch per zoomare. I numeri tratteggiati indicano l'effetto complementare (esito x=2).",
       sceneHintFlat: "Rotella o pinch per zoomare. I numeri tratteggiati indicano l'effetto complementare (esito x=2).", resetView: "Ripristina vista", fullScr: "Schermo intero", closeFull: "Chiudi",
-      lockNeed: "Prima piazza tutti e cinque i numeri.", notPlaced: "non piazzato", resLines: "Linee: verde = coppia vinta, rossa = persa, gialla = parziale. Il numero è la probabilità di vincere quella coppia.",
+      lockNeed: "Prima piazza tutti e {toks} i numeri.", notPlaced: "non piazzato", resLines: "Linee: verde = coppia vinta, rossa = persa, gialla = parziale. Il numero è la probabilità di vincere quella coppia.",
       viewTitle: "Strategia di {name}", viewHint: "Clicca un nome per vedere la sua strategia.", tapHint: "Se trascinare è scomodo, tocca un numero e poi un punto.", unitName: "effetto unità", zeroName: "effetto nullo",
       setup: "Impostazioni della partita", botsToAdd: "Bot da aggiungere", polyLabel: "Poligono", optLine: "Miglior punteggio possibile: {a} con questo poligono, {b} con un bit classico.",
       youImp: "Sei l'impostore", impText: "Il tuo dispositivo è un bit classico, con due stati (0 e 1) e due effetti non banali. Al massimo fai {k}. Nessuno deve accorgersene.",
@@ -2745,12 +2763,15 @@ var Core = (function () {
     }
   };
   var lang = 'en';
+  var TOPIC = 'wbit1'; /*@TOPIC@*/ // network topic and storage namespace of this variant
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   lang = lsGet('wbit-lang') || ((navigator.language || '').slice(0, 2) === 'it' ? 'it' : 'en');
+  var NB = Core.NB; // number of measurements b
+  var NUMW = { en: { pairs: NB === 2 ? 'six' : 'nine', toks: NB === 2 ? 'five' : 'six' }, it: { pairs: NB === 2 ? 'sei' : 'nove', toks: NB === 2 ? 'cinque' : 'sei' } };
   function t(k, v) {
-    var s = (L[lang] && L[lang][k]) || L.en[k] || k;
-    if (v) s = s.replace(/\{(\w+)\}/g, function (m, x) { return v[x] !== undefined ? v[x] : m; });
+    var s = (L[lang] && L[lang][k]) || L.en[k] || k, w = NUMW[lang] || NUMW.en;
+    s = s.replace(/\{(\w+)\}/g, function (m, x) { return v && v[x] !== undefined ? v[x] : x === 'pairs' ? w.pairs : x === 'toks' ? w.toks : x === 'brange' ? '1..' + NB : m; });
     return s;
   }
 
@@ -2783,7 +2804,7 @@ var Core = (function () {
   }
   function fmtP(p) { return String(+(+p).toFixed(2)); }
   function isK6(P) { var k = P * 6; return Math.abs(k - Math.round(k)) < 1e-9; }
-  function pct1(P) { return (Math.round(P * 1000) / 10) + '%'; }
+  function pct1(P) { return Math.round(P * 100) + '%'; }
   function fracP(P) { return pct1(P); }
   function pSub(P) { return ''; }
 
@@ -2820,13 +2841,14 @@ var Core = (function () {
   /* ---------- state ---------- */
   var m0 = /^#?([A-Z2-9]{5})(?:~(\d))?$/.exec(location.hash || '');
   var HASH = m0 ? { room: m0[1], broker: m0[2] ? +m0[2] : 0 } : null;
-  var IS_HOST = !HASH;
+  var JOIN = !HASH && /^#join$/i.test(location.hash || '');
+  var IS_HOST = !HASH && !JOIN;
   var G = { net: null, status: 'connecting', noHostHint: false, confirmReset: false };
   var FLIST = Core.listF();
   var BOT_NAMES = ['Noether', 'Hilbert', 'Weyl', 'Choquet', 'Gleason', 'Jordan', 'Kolmogorov', 'Dirac', 'Born', 'Bell', 'Gelfand', 'Riesz'];
   var H = null, P = null;
 
-  function base() { return 'wbit1/' + (IS_HOST ? H.room : HASH.room); }
+  function base() { return TOPIC + '/' + (IS_HOST ? H.room : HASH.room); }
   function curF() { return FLIST[H.fIdx] || Core.T7; }
   function newHost() {
     return { room: rnd(5, ROOM_AL), broker: 0, phase: 'lobby', attempt: 0, fIdx: 0, n: 4, players: [], roles: {}, subs: {}, hist: {}, obs: {}, results: {}, stats: {}, votes: {}, reveal: null, nbots: 3 };
@@ -2857,7 +2879,7 @@ var Core = (function () {
     if (now) f(); else pubT = setTimeout(f, 120);
   }
   function publishPriv(id) { var p = hFind(id); if (G.net && p && !p.bot) G.net.pub(base() + '/to/' + id, buildPriv(id), true); }
-  function saveHost() { clearTimeout(saveT); saveT = setTimeout(function () { lsSet('wbit-host', JSON.stringify(H)); }, 200); }
+  function saveHost() { clearTimeout(saveT); saveT = setTimeout(function () { lsSet(TOPIC + '-host', JSON.stringify(H)); }, 200); }
   function changed(priv) {
     saveHost(); publishPub(); render();
     if (priv) H.players.forEach(function (p) { publishPriv(p.id); });
@@ -2900,6 +2922,7 @@ var Core = (function () {
   function hostStart() {
     if (H.players.length < 3) { toast(t('needThree')); return; }
     var imp = H.players[(Math.random() * H.players.length) | 0].id;
+    G.viewPid = null;
     H.roles = {}; H.subs = {}; H.stats = {}; H.results = {}; H.hist = {}; H.obs = {}; H.votes = {}; H.reveal = null;
     H.players.forEach(function (p) { var isImp = p.id === imp; H.roles[p.id] = { role: isImp ? 'impostor' : 'honest', device: isImp ? 'bit' : 'sq' }; });
     H.players.forEach(function (p) {
@@ -2922,7 +2945,7 @@ var Core = (function () {
     changed(true);
   }
   function hostAnother() {
-    H.attempt += 1; H.phase = 'strategy';
+    H.attempt += 1; H.phase = 'strategy'; G.viewPid = null;
     H.players.forEach(function (p) {
       var s = H.subs[p.id];
       if (p.bot) {
@@ -2950,9 +2973,17 @@ var Core = (function () {
     changed(true);
   }
   function hostNewGame() {
-    G.confirmReset = false;
+    G.confirmReset = false; G.viewPid = null;
     H.phase = 'lobby'; H.attempt = 0; H.roles = {}; H.subs = {}; H.stats = {}; H.results = {}; H.hist = {}; H.obs = {}; H.votes = {}; H.reveal = null;
     changed(true);
+  }
+  function hostKick(pid) {
+    var p = hFind(pid); if (!p || H.phase !== 'lobby') return;
+    if (!p.bot && G.net) G.net.pub(base() + '/to/' + pid, { v: 1, role: null, kicked: 1 }, true);
+    H.players = H.players.filter(function (q) { return q.id !== pid; });
+    delete H.roles[pid]; delete H.subs[pid]; delete H.votes[pid];
+    if (G.viewPid === pid) G.viewPid = null;
+    changed();
   }
   function hostRmBots() { H.players = H.players.filter(function (p) { return !p.bot; }); changed(true); }
   function hostClearRoom() {
@@ -2962,6 +2993,7 @@ var Core = (function () {
       var old = G.net; setTimeout(function () { old.close(); }, 400);
     }
     var b = H.broker, nb = H.nbots, nn = H.n;
+    G.viewPid = null;
     H = newHost(); H.broker = b; H.nbots = nb; H.n = nn;
     saveHost(); startHostNet(); render();
   }
@@ -2982,7 +3014,7 @@ var Core = (function () {
 
   /* ---------- player: logic ---------- */
   function loadPlayer() {
-    var key = 'wbit-p-' + HASH.room, s = null;
+    var key = TOPIC + '-p-' + HASH.room, s = null;
     try { s = JSON.parse(lsGet(key) || 'null'); } catch (e) {}
     var p = { id: (s && s.id) || rnd(10), name: (s && s.name) || '', strat: (s && s.strat) || emptyStrat(), sel: null, lift: null, full: false, locked: false, vote: null, pub: null, priv: null, seenAttempt: -1, key: key };
     return p;
@@ -2995,12 +3027,12 @@ var Core = (function () {
     var f = function () { if (stratComplete()) sendIn({ t: 'sub', S: P.strat.S.slice(), M: P.strat.M.slice(), locked: P.locked ? 1 : 0 }); saveP(); };
     if (now) f(); else sT = setTimeout(f, 300);
   }
-  function emptyStrat() { return { S: [null, null, null], M: [null, null] }; }
+  function emptyStrat() { var M = [], b; for (b = 0; b < NB; b++) M.push(null); return { S: [null, null, null], M: M }; }
   function stratComplete() { return P.strat.S.every(function (v) { return v !== null && v !== undefined; }) && P.strat.M.every(function (v) { return v !== null && v !== undefined; }); }
   function PD() { return P.priv && P.priv.role ? devOf(P.priv.device, P.priv.n) : null; }
   function ensureStrat() {
     var D = PD(); if (!D) return false;
-    var st = P.strat, ok = st && Array.isArray(st.S) && st.S.length === 3 && Array.isArray(st.M) && st.M.length === 2 &&
+    var st = P.strat, ok = st && Array.isArray(st.S) && st.S.length === 3 && Array.isArray(st.M) && st.M.length === NB &&
       st.S.every(function (v) { return v === null || (Number.isInteger(v) && v >= 0 && v < D.ns); }) && st.M.every(function (v) { return v === null || (Number.isInteger(v) && v >= 0 && v < D.ne); });
     if (!ok) { P.strat = emptyStrat(); return true; }
     return false;
@@ -3011,7 +3043,7 @@ var Core = (function () {
     var first = !P.pub;
     P.pub = m; G.noHostHint = false;
     var me = m.players.filter(function (p) { return p.id === P.id; })[0];
-    if (first && !me && P.name && (m.phase === 'lobby' || m.phase === 'strategy')) sendIn({ t: 'join', name: P.name });
+    if (first && !me && P.name && (m.phase === 'lobby' || m.phase === 'strategy')) setTimeout(function () { if (!inList() && !(P.priv && P.priv.kicked)) sendIn({ t: 'join', name: P.name }); }, 1500);
     if (m.phase === 'strategy' && me && (m.attempt !== P.seenAttempt || m.game !== P.seenGame)) {
       if (!first && m.game !== P.seenGame) { P.strat = emptyStrat(); P.sel = null; }
       P.locked = first ? !!me.locked : false; P.seenAttempt = m.attempt; P.seenGame = m.game; pushStrat(true);
@@ -3064,13 +3096,20 @@ var Core = (function () {
   function joinLink() { return joinUrl() + '#' + H.room + (H.broker ? '~' + H.broker : ''); }
 
   function goalTable(F, big) {
-    var h = '<div class="goal"><div class="scroll"><table class="tbl goaltbl' + (big ? ' big' : '') + '"><tr><th></th><th>b=1</th><th>b=2</th></tr>';
-    for (var a = 0; a < 3; a++) h += '<tr><th>a=' + (a + 1) + '</th><td class="x' + F[a][0] + '" title="x = ' + F[a][0] + '"><span class="sr">x = ' + F[a][0] + '</span></td><td class="x' + F[a][1] + '" title="x = ' + F[a][1] + '"><span class="sr">x = ' + F[a][1] + '</span></td></tr>';
+    var h = '<div class="goal"><div class="scroll"><table class="tbl goaltbl' + (big ? ' big' : '') + '"><tr><th></th>';
+    var bb, a;
+    for (bb = 0; bb < NB; bb++) h += '<th>b=' + (bb + 1) + '</th>';
+    h += '</tr>';
+    for (a = 0; a < 3; a++) {
+      h += '<tr><th>a=' + (a + 1) + '</th>';
+      for (bb = 0; bb < NB; bb++) h += '<td class="x' + F[a][bb] + '" title="x = ' + F[a][bb] + '"><span class="sr">x = ' + F[a][bb] + '</span></td>';
+      h += '</tr>';
+    }
     return h + '</table></div><div class="legend"><span><i class="x1"></i>x = 1</span><span><i class="x2"></i>x = 2</span></div></div>';
   }
   function pairCells(st) {
     var h = '', a, b;
-    for (b = 0; b < 2; b++) for (a = 0; a < 3; a++) {
+    for (a = 0; a < 3; a++) for (b = 0; b < NB; b++) {
       var v = st && st.pairs ? st.pairs[a][b] : undefined, cls, ch;
       if (v === undefined) { cls = 'n'; ch = '·'; }
       else if (v > 1 - 1e-9) { cls = 'w'; ch = '✓'; }
@@ -3096,14 +3135,15 @@ var Core = (function () {
         var on = o.vote === p.id;
         extra = '<button type="button" class="btn small' + (on ? '' : ' ghost') + '" data-act="vote" data-pid="' + esc(p.id) + '" aria-pressed="' + on + '">' + esc(t(on ? 'suspected' : 'suspect')) + '</button>';
       }
+      if (o.removable) extra = '<button type="button" class="xbtn" data-act="kick" data-pid="' + esc(p.id) + '" title="' + esc(t('removeP')) + '" aria-label="' + esc(t('removeP') + ' ' + p.name) + '">\u2715</button>';
       if (pub.reveal) extra = '<span class="rt">' + esc(t('votes', { n: (pub.reveal.tally && pub.reveal.tally[p.id]) || 0 })) + '</span>';
-var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-act="view" data-pid="' + esc(p.id) + '" aria-pressed="' + (o.viewPid === p.id) + '">' + esc(p.name) + '</button>' : '<span class="nm">' + esc(p.name) + '</span>';
+var nmEl = o.viewable ? '<button type="button" class="nmbtn" data-act="view" data-pid="' + esc(p.id) + '" aria-pressed="' + (o.viewPid === p.id) + '">' + esc(p.name) + '</button>' : '<span class="nm">' + esc(p.name) + '</span>';
       if (!showStats) { h += '<div class="prow" style="grid-template-columns:minmax(0,1fr) auto"><div class="pname">' + nmEl + tags + '</div><span>' + extra + '</span></div>'; return; }
       var pct = s ? Math.round(s.P * 100) : 0;
       var hist = s && s.hist && s.hist.length > 1 ? '<span class="rt">' + s.hist.map(fracP).join(' → ') + '</span>' : '';
       h += '<div class="prow"><div class="pname">' + nmEl + tags + extra + '</div>' +
         '<div><div class="bar"><i style="width:' + pct + '%"></i></div><span class="rt"><b>' + (s ? fracP(s.P) : '—') + '</b>' + (s && pSub(s.P) ? ' · ' + pSub(s.P) : '') + '</span></div>' +
-        '<div class="pgrid">' + pairCells(s) + '</div><div class="hist">' + hist + '</div></div>';
+        '<div class="pgrid" style="grid-template-columns:repeat(' + NB + ',16px)">' + pairCells(s) + '</div><div class="hist">' + hist + '</div></div>';
     });
     return h + '</div>';
   }
@@ -3118,28 +3158,41 @@ var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-
     var a = Core.best(curF(), devOf('sq', H.n)).P, b = Core.best(curF(), Core.device('bit')).P;
     return '<p class="hint" style="margin:-4px 0 16px">' + esc(t('polyLabel')) + ' n=' + H.n + ' (' + esc(polyName(H.n)) + '). ' + esc(t('optLine', { a: fracP(a) + (isK6(a) ? '' : ''), b: fracP(b) })) + '</p>';
   }
+  function viewCard(pub, always) {
+    var vp = pub.players.filter(function (p) { return p.id === G.viewPid; })[0];
+    if (!vp && !always) return '';
+    return '<div class="card"><div class="cardhead"><h2>' + (vp ? esc(t('viewTitle', { name: vp.name })) : esc(t('viewHint'))) + '</h2><div class="scenebar"><button type="button" class="btn ghost small" data-act="resetview" data-v="h">' + esc(t('resetView')) + '</button></div></div>' +
+      sceneBlock('sc-host', 'h') + '<p class="hint small" style="margin-top:6px">' + esc(t('resLines')) + '</p></div>';
+  }
+  function statsLayout(pub) {
+    var board = boardHTML(pub, { viewable: true, viewPid: G.viewPid }), vc = viewCard(pub, false);
+    if (vc) return '<div class="hgrid2"><div>' + board + '</div>' + vc + '</div>';
+    return board + '<p class="hint small" style="margin-top:8px">' + esc(t('viewHint')) + '</p>';
+  }
   function renderHostView() {
     var pub = buildPub(), h = '';
     if (pub.phase === 'lobby') {
       h = '<div class="hgrid"><div class="card"><h2>' + esc(t('scan')) + '</h2><div class="qr" style="margin-top:12px">' + qrSVG(joinLink()) + '</div>' +
-        '<div class="code">' + esc(H.room) + '</div><p class="url">' + esc(t('orType', { url: joinUrl() })) + '</p></div>' +
-        '<div>' + boardHTML(pub) + optCard() + '</div></div>';
+        '<div class="code">' + esc(H.room) + '</div><p class="url">' + esc(t('orType', { url: joinUrl() })) + '</p>' + (H.broker ? '<p class="url">' + esc(t('codeBroker', { c: H.room + '~' + H.broker })) + '</p>' : '') + '</div>' +
+        '<div>' + boardHTML(pub, { removable: true }) + optCard() + '</div></div>';
     } else if (pub.phase === 'strategy') {
       var done = pub.players.filter(function (p) { return p.locked; }).length;
-      h = '<div class="hgrid2"><div class="card">' + sceneBlock('sc-host', 'h') + '<div class="scenebar" style="margin-top:8px"><button type="button" class="btn ghost small" data-act="resetview" data-v="h">' + esc(t('resetView')) + '</button></div><p class="hint small">' + esc(t('sceneHint')) + '</p></div>' +
+      var vpS = pub.players.filter(function (p) { return p.id === G.viewPid && p.bot; })[0];
+      h = '<div class="hgrid2"><div class="card">' + (vpS ? '<h2 style="margin-bottom:8px">' + esc(t('viewTitle', { name: vpS.name })) + '</h2>' : '') + sceneBlock('sc-host', 'h') + '<div class="scenebar" style="margin-top:8px"><button type="button" class="btn ghost small" data-act="resetview" data-v="h">' + esc(t('resetView')) + '</button></div><p class="hint small">' + esc(t('sceneHint')) + '</p></div>' +
         '<div class="card"><div class="cardhead"><h2>' + esc(t('hStrat')) + '</h2><span class="hint">' + esc(t('attempt', { n: pub.attempt })) + '</span></div>' +
         '<h3>' + esc(t('goalTitle')) + '</h3>' + goalTable(pub.F, true) + '<p class="hint" style="margin-top:10px">' + esc(t('goalHint')) + '</p>' +
         '<h3>' + esc(t('lockedCount', { n: done, m: pub.players.length })) + '</h3><div class="plist">' +
-        pub.players.map(function (p) { return '<span class="pchip' + (p.locked ? ' done' : '') + '">' + esc(p.name) + (p.locked ? ' ✓' : ' …') + '</span>'; }).join('') + '</div></div></div>';
+        pub.players.map(function (p) {
+          if (p.bot) return '<button type="button" class="pchip btnchip' + (p.locked ? ' done' : '') + '" data-act="view" data-pid="' + esc(p.id) + '" aria-pressed="' + (G.viewPid === p.id) + '">' + esc(p.name) + (p.locked ? ' ✓' : ' …') + '</button>';
+          return '<span class="pchip' + (p.locked ? ' done' : '') + '">' + esc(p.name) + (p.locked ? ' ✓' : ' …') + '</span>';
+        }).join('') + '</div>' + (pub.players.some(function (p) { return p.bot; }) ? '<p class="hint small" style="margin-top:8px">' + esc(t('viewBot')) + '</p>' : '') + '</div></div>';
     } else if (pub.phase === 'stats') {
-      h = '<h2 style="margin-bottom:10px">' + esc(t('statsTitle')) + ' · ' + esc(t('attempt', { n: pub.attempt })) + '</h2>' + boardHTML(pub);
+      h = '<h2 style="margin-bottom:10px">' + esc(t('statsTitle')) + ' · ' + esc(t('attempt', { n: pub.attempt })) + '</h2>' + statsLayout(pub);
     } else if (pub.phase === 'vote') {
       var humans = H.players.filter(function (p) { return !p.bot; }).length;
-      h = '<div class="card"><h2>' + esc(t('voteTitle')) + '</h2><p class="bigmsg" style="margin-top:8px">' + esc(t('votesCast', { n: pub.voted, m: humans })) + '</p></div>' + boardHTML(pub);
+      h = '<div class="card"><h2>' + esc(t('voteTitle')) + '</h2><p class="bigmsg" style="margin-top:8px">' + esc(t('votesCast', { n: pub.voted, m: humans })) + '</p></div>' + statsLayout(pub);
     } else {
-      var vp = pub.players.filter(function (p) { return p.id === G.viewPid; })[0];
-      h = resultCard(pub) + '<div class="card"><div class="cardhead"><h2>' + (vp ? esc(t('viewTitle', { name: vp.name })) : esc(t('viewHint'))) + '</h2><div class="scenebar"><button type="button" class="btn ghost small" data-act="resetview" data-v="h">' + esc(t('resetView')) + '</button></div></div>' +
-        sceneBlock('sc-host', 'h') + '<p class="hint small" style="margin-top:6px">' + esc(t('resLines')) + '</p></div>' + optCard();
+      h = resultCard(pub) + viewCard(pub, true) + optCard();
       var mx = Math.max.apply(null, pub.players.map(function (p) { return (pub.reveal.tally && pub.reveal.tally[p.id]) || 0; }).concat([1]));
       h += '<div class="card"><h2>' + esc(t('tally')) + '</h2>' + pub.players.map(function (p) {
         var c = (pub.reveal.tally && pub.reveal.tally[p.id]) || 0;
@@ -3196,10 +3249,10 @@ var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-
     h += '<div class="tray"><div class="grp"><span>' + esc(t('trayA')) + '</span>';
     for (a = 0; a < 3; a++) h += '<button type="button" class="chip2 a' + (P.strat.S[a] !== null ? ' placed' : '') + (P.sel === 'a' + a ? ' sel' : '') + '" data-tok="a' + a + '"' + (lock ? ' disabled' : '') + '>a' + (a + 1) + '</button>';
     h += '</div><div class="grp"><span>' + esc(t('trayB')) + '</span>';
-    for (b = 0; b < 2; b++) h += '<button type="button" class="chip2 b' + (P.strat.M[b] !== null ? ' placed' : '') + (P.sel === 'b' + b ? ' sel' : '') + '" data-tok="b' + b + '"' + (lock ? ' disabled' : '') + '>b' + (b + 1) + '</button>';
+    for (b = 0; b < NB; b++) h += '<button type="button" class="chip2 b' + (P.strat.M[b] !== null ? ' placed' : '') + (P.sel === 'b' + b ? ' sel' : '') + '" data-tok="b' + b + '"' + (lock ? ' disabled' : '') + '>b' + (b + 1) + '</button>';
     h += '</div></div><div class="readout">';
     for (a = 0; a < 3; a++) h += '<span>a=' + (a + 1) + ' &rarr; ' + (P.strat.S[a] === null ? esc(t('notPlaced')) : D.stName(P.strat.S[a])) + '</span>';
-    for (b = 0; b < 2; b++) { var Em = P.strat.M[b]; h += '<span>b=' + (b + 1) + ' &rarr; x=1: ' + (Em === null ? esc(t('notPlaced')) : D.effName(Em) + ', x=2: ' + D.effName(D.cmpl[Em])) + '</span>'; }
+    for (b = 0; b < NB; b++) { var Em = P.strat.M[b]; h += '<span>b=' + (b + 1) + ' &rarr; x=1: ' + (Em === null ? esc(t('notPlaced')) : D.effName(Em) + ', x=2: ' + D.effName(D.cmpl[Em])) + '</span>'; }
     h += '</div>';
     h += '<h3>' + esc(t('goalTitle')) + '</h3>' + goalTable(pub.F) + '<p class="hint small" style="margin-top:8px">' + esc(t('goalHint')) + '</p>';
     h += '<div class="row"><button type="button" class="btn block' + (lock ? ' ghost' : '') + '" data-act="lock"' + (!lock && !done ? ' aria-disabled="true" style="opacity:.55"' : '') + '>' + esc(t(lock ? 'unlock' : 'lock')) + '</button></div></div>';
@@ -3230,6 +3283,7 @@ var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-
     var pub = P.pub, h = '';
     if (pub && pub.phase === 'closed') h = '<div class="card"><p class="hint">' + esc(t('closed')) + '</p></div>';
     else if (!pub) h = '<div class="card"><h2>' + esc(t('roomCode', { code: HASH.room })) + '</h2><p class="hint">' + esc(t(G.noHostHint ? 'noHost' : 'connecting')) + '…</p></div>';
+    else if (!inList() && P.priv && P.priv.kicked) h = '<div class="card"><p class="hint">' + esc(t('removedMsg')) + '</p><div class="row"><button class="btn" type="button" data-act="rejoin">' + esc(t('rejoin')) + '</button></div></div>';
     else if (!inList()) {
       if (pub.phase === 'lobby' || pub.phase === 'strategy') {
         h = '<div class="card"><h2>' + esc(t('roomCode', { code: HASH.room })) + '</h2><p class="hint">' + esc(t('waitHost')) + '</p>' +
@@ -3253,12 +3307,18 @@ var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-
   /* ----- chrome ----- */
   function renderTop() {
     var chip = '<span class="chip ' + (G.status === 'online' ? 'on' : G.status === 'offline' ? 'off' : '') + '">● ' + esc(t(G.status)) + '</span>';
+    if (JOIN) chip = '';
+    if (IS_HOST && H.phase === 'lobby') chip += '<button class="btn ghost small" data-act="joinmode" type="button">' + esc(t('joinPc')) + '</button>';
     setHTML($('top'), '<div class="brand">' + brandGlyph() + '<div><h1>' + esc(t('title')) + '</h1><p>' + esc(t('sub')) + '</p></div></div><div class="tools">' + chip +
       '<button class="btn ghost small" data-act="lang" type="button">' + esc(t('lang')) + '</button></div>');
   }
   var rq = false;
   function render() { if (DR) { pendingRender = true; return; } if (rq) return; rq = true; requestAnimationFrame(function () { rq = false; doRender(); }); }
+  function joinHTML() {
+    return '<div class="card"><h2>' + esc(t('joinHere')) + '</h2><p class="hint">' + esc(t('codeHelp')) + '</p><div class="row"><input id="codeIn" class="codein" type="text" maxlength="9" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="' + esc(t('codePh')) + '" placeholder="' + esc(t('codePh')) + '"><button class="btn" type="button" data-act="gocode">' + esc(t('go')) + '</button></div></div>';
+  }
   function doRender() {
+    if (JOIN) { document.documentElement.lang = lang; document.body.className = ''; renderTop(); $('notice').hidden = true; setHTML($('view'), joinHTML()); setHTML($('controls'), ''); return; }
     document.documentElement.lang = lang;
     document.body.className = IS_HOST ? 'host' : '';
     renderTop();
@@ -3340,7 +3400,8 @@ var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-
   var DR = null, pendingRender = false;
 
   function tokensFromDetail(detail) {
-    var tk = { S: [null, null, null], M: [null, null] };
+    var tk = { S: [null, null, null], M: [] }, bi;
+    for (bi = 0; bi < NB; bi++) tk.M.push(null);
     detail.forEach(function (d) { tk.S[d.a] = d.j; tk.M[d.b] = d.E; });
     return tk;
   }
@@ -3354,9 +3415,13 @@ var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-
       return { D: D2, view: 'p', tokens: tokensFromDetail(r.detail), links: r.detail, interactive: false };
     }
     if (id === 'sc-host') {
-      if (H.phase === 'reveal' && G.viewPid && H.results[G.viewPid]) {
+      if ((H.phase === 'stats' || H.phase === 'vote' || H.phase === 'reveal') && G.viewPid && H.results[G.viewPid]) {
         var rr = H.results[G.viewPid];
         return { D: hostDev(G.viewPid), view: 'h', tokens: tokensFromDetail(rr.detail), links: rr.detail, interactive: false };
+      }
+      if (H.phase === 'strategy' && G.viewPid) {
+        var pp = hFind(G.viewPid), sb = H.subs[G.viewPid];
+        if (pp && pp.bot && sb && Core.valid(sb, hostDev(G.viewPid))) return { D: hostDev(G.viewPid), view: 'h', tokens: { S: sb.S, M: sb.M }, interactive: false };
       }
       return { D: devOf('sq', H.n), view: 'h', tokens: null, interactive: false };
     }
@@ -3429,7 +3494,7 @@ var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-
       function put(pi, tok) { (at[pi] = at[pi] || []).push(tok); }
       var T = ctx.tokens, i2;
       for (i2 = 0; i2 < 3; i2++) if (T.S[i2] !== null && T.S[i2] !== undefined && ctx.lift !== 'a' + i2) put(T.S[i2], { id: 'a' + i2, txt: 'a' + (i2 + 1), c: 's' });
-      for (i2 = 0; i2 < 2; i2++) if (T.M[i2] !== null && T.M[i2] !== undefined && ctx.lift !== 'b' + i2) {
+      for (i2 = 0; i2 < NB; i2++) if (T.M[i2] !== null && T.M[i2] !== undefined && ctx.lift !== 'b' + i2) {
         put(Gm.ns + T.M[i2], { id: 'b' + i2, txt: 'b' + (i2 + 1), c: 'e' });
         put(Gm.ns + D.cmpl[T.M[i2]], { id: 'g' + i2, txt: 'b' + (i2 + 1), c: 'e', ghost: true });
       }
@@ -3565,7 +3630,10 @@ var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-
         P.locked = !P.locked; P.sel = null; pushStrat(true); render(); break;
       case 'resetview': SV[d.v] = SV0(); drawScenes(); break;
       case 'full': P.full = !P.full; document.body.classList.toggle('noscroll', P.full); render(); break;
-      case 'view': G.viewPid = d.pid; render(); break;
+      case 'view': G.viewPid = G.viewPid === d.pid ? null : d.pid; render(); break;
+      case 'kick': hostKick(d.pid); break;
+      case 'rejoin': P.priv = null; render(); break;
+      case 'joinmode': location.hash = 'join'; location.reload(); break;
       case 'vote': P.vote = d.pid; sendIn({ t: 'vote', target: d.pid }); render(); break;
       case 'addbots': hostAddBots(); break;
       case 'rmbots': hostRmBots(); break;
@@ -3582,8 +3650,13 @@ var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-
         if (!G.confirmReset) { G.confirmReset = true; render(); setTimeout(function () { G.confirmReset = false; render(); }, 4000); }
         else hostNewGame();
         break;
-      case 'gocode': { var ci = $('codeIn'), c = ((ci && ci.value) || '').trim().toUpperCase(); if (/^[A-Z2-9]{5}$/.test(c)) { location.hash = c; location.reload(); } else toast(t('codePh')); break; }
+      case 'gocode': { var ci = $('codeIn'), c = ((ci && ci.value) || '').replace(/\s+/g, '').toUpperCase(); if (/^[A-Z2-9]{5}(~\d)?$/.test(c)) { location.hash = c; location.reload(); } else toast(t('codePh')); break; }
     }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || !e.target || !e.target.id) return;
+    var b = e.target.id === 'codeIn' ? document.querySelector('[data-act=gocode]') : e.target.id === 'nick' ? document.querySelector('[data-act=join]') : null;
+    if (b) { e.preventDefault(); b.click(); }
   });
   document.addEventListener('change', function (e) {
     var el = e.target, k = el.getAttribute && el.getAttribute('data-cfg');
@@ -3597,8 +3670,9 @@ var nmEl = o.viewable && pub.reveal ? '<button type="button" class="nmbtn" data-
 
   /* ---------- boot ---------- */
   function boot() {
+    if (JOIN) { render(); return; }
     if (IS_HOST) {
-      try { var s = JSON.parse(lsGet('wbit-host') || 'null'); H = s && s.room ? s : newHost(); } catch (e) { H = newHost(); }
+      try { var s = JSON.parse(lsGet(TOPIC + '-host') || 'null'); H = s && s.room ? s : newHost(); } catch (e) { H = newHost(); }
       if (!H.n || H.n > 7) H.n = 4;
       saveHost(); render(); startHostNet();
     } else {
